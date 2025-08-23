@@ -82,3 +82,9 @@ firebase-debug.*.log
 
 # dataconnect generated files
 .dataconnect
+
+# Build directories - prevent compiled code with secrets from being committed
+build/
+dist/
+frontend/build/
+frontend/dist/
