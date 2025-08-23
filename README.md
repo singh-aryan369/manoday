@@ -21,31 +21,49 @@ A confidential mental wellness application with OAuth2 authentication for youth,
 
 ### Installation
 
-1. **Install dependencies:**
+1. **Clone the repository:**
    ```bash
-   npm install
+   git clone https://github.com/singh-aryan369/manoday.git
+   cd manoday-app
    ```
 
-2. **Configure Firebase:**
+2. **Install dependencies:**
+   ```bash
+   npm install
+   cd frontend && npm install
+   ```
+
+3. **Configure Environment Variables:**
+   Create a `.env` file in the root directory and `frontend/.env`:
+   ```env
+   REACT_APP_FIREBASE_API_KEY=your-api-key
+   REACT_APP_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   REACT_APP_FIREBASE_PROJECT_ID=your-project-id
+   REACT_APP_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+   REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+   REACT_APP_FIREBASE_APP_ID=your-app-id
+   REACT_APP_FIREBASE_MEASUREMENT_ID=your-measurement-id
+   ```
+
+4. **Configure Firebase:**
    - Go to your Firebase Console
    - Enable Authentication with Google, GitHub, and Microsoft providers
    - Get your Firebase config from Project Settings
-   - Update `src/firebase/config.ts` with your actual Firebase configuration
+   - Copy the values to your `.env` files
 
-3. **Start development server:**
+5. **Start development server:**
    ```bash
+   cd frontend
    npm start
    ```
+   **Note**: The build folder is automatically created during development. No manual build step needed for local development.
 
-4. **Build for production:**
+6. **Build for production (optional):**
    ```bash
+   cd frontend
    npm run build
    ```
-
-5. **Deploy to Firebase:**
-   ```bash
-   npm run deploy
-   ```
+   **Note**: Build files are excluded from git for security reasons and will be created fresh on each deployment.
 
 ## 🔧 Firebase Setup
 
