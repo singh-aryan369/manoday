@@ -1,0 +1,29 @@
+{
+  "name": "manoday-app-root",
+  "version": "1.0.0",
+  "description": "Manoday Mental Wellness App - Root Package",
+  "private": true,
+  "scripts": {
+    "frontend:install": "cd frontend && npm install",
+    "frontend:start": "cd frontend && npm start",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:serve": "cd frontend && npx serve -s build -l 3000",
+    "backend:install": "cd backend/functions && npm install",
+    "backend:start": "cd backend/functions && npm run serve",
+    "backend:build": "cd backend/functions && npm run build",
+    "install:all": "npm run frontend:install && npm run backend:install",
+    "dev": "concurrently \"npm run frontend:start\" \"npm run backend:start\"",
+    "build": "npm run frontend:build",
+    "deploy": "npm run frontend:build && firebase deploy",
+    "deploy:hosting": "npm run frontend:build && firebase deploy --only hosting",
+    "deploy:functions": "npm run backend:build && firebase deploy --only functions",
+    "deploy:firestore": "firebase deploy --only firestore"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "workspaces": [
+    "frontend",
+    "backend/functions"
+  ]
+}
