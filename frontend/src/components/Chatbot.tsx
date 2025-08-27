@@ -1,12 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { PaperAirplaneIcon, LightBulbIcon, HeartIcon } from '@heroicons/react/24/outline';
 
+// Define message structure
 interface Message {
-  id: string;
+  id: number;
   text: string;
-  isUser: boolean;
+  sender: 'user' | 'bot';
   timestamp: Date;
+  type: 'message' | 'recommendation';
+  metadata?: {
+    recommendation?: string;
+    confidence?: number;
+  };
+}
+
+// Define wellness data structure
+interface WellnessData {
+  mood: string; // 'Happy', 'Sad', 'Anxious', 'Stressed', 'Angry', 'Calm', 'Lonely', 'Neutral'
+  sleepHours: string; // Categorical: '0', '3', '6', '7', '8', '10' (as strings)
+  stressLevel: string; // 'Low', 'Medium', 'High'
+  academicPressure: string; // 'Low', 'Medium', 'High'
+  socialSupport: string; // 'Weak', 'Average', 'Strong'
+  loneliness: string; // 'Never', 'Sometimes', 'Often'
+  confidenceLevel: string; // 'Low', 'Medium', 'High'
+  hobbiesInterest: string; // 'Music', 'Sports', 'Reading', 'Travel', 'None'
+  opennessToJournaling: string; // 'Yes', 'No'
+  willingForProfessionalHelp: string; // 'Yes', 'No'
 }
 
 const Chatbot: React.FC = () => {
@@ -14,39 +34,95 @@ const Chatbot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [wellnessData, setWellnessData] = useState<Partial<WellnessData>>({});
+  const [conversationHistory, setConversationHistory] = useState<string[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   // Set welcome message based on user type
   useEffect(() => {
     if (currentUser) {
       const welcomeMessage: Message = {
-        id: '1',
+        id: Date.now(),
         text: currentUser.isAnonymous 
           ? "Hello there! 🌟 I'm so glad you decided to chat anonymously. This is a safe space where you can share anything on your mind without judgment. Your privacy is completely protected. How are you feeling today?"
           : `Hello ${currentUser.displayName || 'friend'}! 🌟 I'm here to support you on your mental wellness journey. This is a safe, confidential space where you can share whatever is on your mind. How are you feeling today?`,
-        isUser: false,
-        timestamp: new Date()
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'message'
       };
       setMessages([welcomeMessage]);
     }
   }, [currentUser]);
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+  // Simplified data extraction - let Gemini handle all the intelligence
+  const extractWellnessData = (conversation: string[]): Partial<WellnessData> => {
+    const data: Partial<WellnessData> = {};
+    
+    // Get the most recent user message for better context
+    const recentMessage = conversation[conversation.length - 1]?.toLowerCase() || '';
+    
+    // Handle skip requests immediately
+    if (recentMessage.includes('skip') || recentMessage.includes('next question') || 
+        recentMessage.includes('i don\'t want to answer') || recentMessage.includes('move on') ||
+        recentMessage.includes('pass') || recentMessage.includes('don\'t want to talk about it')) {
+      // Return empty data - backend will handle with smart defaults
+      return {};
+    }
+    
+    // NO FRONTEND EXTRACTION - Let Gemini handle ALL intelligence
+    // This ensures user responses are never overridden by frontend logic
+    
+    return data;
+  };
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputMessage,
-      isUser: true,
-      timestamp: new Date()
-    };
+  // Call Vertex AI Gemini for empathetic response
+  const getGeminiResponse = async (userMessage: string, history: string[], wellnessData: Partial<WellnessData>): Promise<{ response: string; extractedData: any; updatedWellnessData: any }> => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/smart-surf-469908-n0/us-central1/gemini`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          conversationHistory: history,
+          wellnessData: wellnessData
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Gemini API call failed');
+      }
+      
+      const data = await response.json();
+      return {
+        response: data.response,
+        extractedData: data.extractedData || {},
+        updatedWellnessData: data.updatedWellnessData || wellnessData
+      };
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      // Fallback empathetic responses
+      return {
+        response: getFallbackResponse(userMessage),
+        extractedData: {},
+        updatedWellnessData: wellnessData
+      };
+    }
+  };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
-    setIsTyping(true);
-
-    // Simulate bot response (replace with actual AI integration)
-    setTimeout(() => {
-      const botResponses = [
+  // Fallback empathetic responses when Gemini is not available
+  const getFallbackResponse = (userMessage: string): string => {
+    const responses = [
         "Thank you for sharing that with me. Your feelings are completely valid, and I want you to know that you're not alone in this. 💙",
         "I hear you, and I can sense the courage it took to open up. Whatever you're going through, we can work through it together. What feels most overwhelming right now?",
         "That sounds really challenging, and I'm sorry you're experiencing this. You've taken a brave step by reaching out. How can I best support you in this moment?",
@@ -57,18 +133,155 @@ const Chatbot: React.FC = () => {
         "Every feeling you have is important and deserves space. I'm grateful you feel safe sharing here. What would help you feel even a little bit lighter right now?"
       ];
       
-      const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  // Call AutoML model for activity recommendation
+  const getAutoMLRecommendation = async (wellnessData: Partial<WellnessData>): Promise<{ recommendation: string; confidence: number }> => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/smart-surf-469908-n0/us-central1/automl`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          features: wellnessData
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('AutoML API call failed');
+      }
+      
+      const data = await response.json();
+      return { recommendation: data.recommendation || 'Meditation and Yoga', confidence: data.confidence || 0.8 };
+    } catch (error) {
+      console.error('AutoML API error:', error);
+      // Fallback recommendation based on mood
+      return { recommendation: getFallbackRecommendation(wellnessData.mood), confidence: 0.8 };
+    }
+  };
+
+  // Fallback recommendation when AutoML is not available
+  const getFallbackRecommendation = (mood?: string): string => {
+    switch (mood?.toLowerCase()) {
+      case 'stressed':
+      case 'anxious':
+        return 'Meditation and Yoga';
+      case 'sad':
+      case 'depressed':
+        return 'Professional Help';
+      case 'lonely':
+        return 'Hobbies Wanderlust';
+      case 'overwhelmed':
+        return 'Goal Setting';
+      default:
+        return 'Journaling';
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    const userMessage: Message = {
+      id: Date.now(),
+      text: inputMessage,
+      sender: 'user',
+      timestamp: new Date(),
+      type: 'message'
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsTyping(true);
+
+    // Update conversation history
+    const newHistory = [...conversationHistory, inputMessage];
+    setConversationHistory(newHistory);
+
+    // Extract wellness data
+    const extractedData = extractWellnessData(newHistory);
+    const updatedWellnessData = { ...wellnessData, ...extractedData };
+    setWellnessData(updatedWellnessData);
+
+    try {
+      // Get empathetic response from Gemini (pass cumulative wellness data, not just extracted)
+      const geminiResult = await getGeminiResponse(inputMessage, newHistory, updatedWellnessData);
+      
+      // Update wellness data with what Gemini extracted
+      if (geminiResult.extractedData && Object.keys(geminiResult.extractedData).length > 0) {
+        setWellnessData(geminiResult.updatedWellnessData);
+      }
       
       const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: randomResponse,
-        isUser: false,
-        timestamp: new Date()
+        id: Date.now() + 1,
+        text: geminiResult.response,
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'message'
       };
 
       setMessages(prev => [...prev, botMessage]);
+
+      // Check if we have ALL 10 parameters for AutoML recommendation
+      const requiredParams = ['mood', 'sleepHours', 'stressLevel', 'academicPressure', 'socialSupport', 'loneliness', 'confidenceLevel', 'hobbiesInterest', 'opennessToJournaling', 'willingForProfessionalHelp'];
+      const collectedParams = requiredParams.filter(param => updatedWellnessData[param as keyof typeof updatedWellnessData]);
+      const hasAllParams = collectedParams.length === 10; // Require ALL 10 parameters
+      
+      const userAsksForRecommendation = inputMessage.toLowerCase().includes('recommend me') || 
+                                        inputMessage.toLowerCase().includes('suggest me') || 
+                                        inputMessage.toLowerCase().includes('help me') ||
+                                        inputMessage.toLowerCase().includes('recommend') ||
+                                        inputMessage.toLowerCase().includes('suggest');
+      
+      // Trigger AutoML ONLY if user asks OR we have ALL 10 parameters
+      if (userAsksForRecommendation || hasAllParams) {
+        // Add a small delay to make the conversation feel more natural
+        setTimeout(async () => {
+          try {
+            const recommendation = await getAutoMLRecommendation(updatedWellnessData);
+            
+            const recommendationMessage: Message = {
+              id: Date.now() + 2,
+              text: hasAllParams 
+                ? `I would recommend you this: **${recommendation.recommendation}** 💡`
+                : `Based on our conversation, I think this might help you: **${recommendation.recommendation}** 💡`,
+              sender: 'bot',
+              timestamp: new Date(),
+              type: 'recommendation',
+              metadata: { recommendation: recommendation.recommendation, confidence: recommendation.confidence }
+            };
+
+            const followUpMessage: Message = {
+              id: Date.now() + 3,
+              text: "Would you like to learn more about this activity?",
+              sender: 'bot',
+              timestamp: new Date(),
+              type: 'message'
+            };
+
+            setMessages(prev => [...prev, recommendationMessage, followUpMessage]);
+          } catch (error) {
+            console.error('Error getting AutoML recommendation:', error);
+          }
+        }, 1000);
+      }
+
+    } catch (error) {
+      console.error('Error processing message:', error);
+      
+      const errorMessage: Message = {
+        id: Date.now() + 1,
+        text: "I'm having trouble processing that right now. Could you try rephrasing?",
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'message'
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1000 + Math.random() * 2000); // Random delay to feel more natural
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -120,18 +333,34 @@ const Chatbot: React.FC = () => {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
                   className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                    message.isUser
+                    message.sender === 'user'
                       ? 'bg-blue-600 text-white'
+                      : message.type === 'recommendation'
+                      ? 'bg-green-50 border border-green-200 text-green-800'
                       : 'bg-gray-100 text-gray-900'
                   }`}
                 >
-                  <p className="text-sm">{message.text}</p>
+                  <div className="flex items-start space-x-2">
+                    {message.type === 'recommendation' && (
+                      <LightBulbIcon className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                      {message.metadata?.recommendation && (
+                        <div className="mt-2 p-2 bg-green-100 rounded border border-green-200">
+                          <p className="text-xs font-medium text-green-800">
+                            💡 Recommended Activity: {message.metadata.recommendation}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <p className={`text-xs mt-1 ${
-                    message.isUser ? 'text-blue-100' : 'text-gray-500'
+                    message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
                   }`}>
                     {message.timestamp.toLocaleTimeString([], { 
                       hour: '2-digit', 
@@ -153,6 +382,8 @@ const Chatbot: React.FC = () => {
                 </div>
               </div>
             )}
+            
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
@@ -180,6 +411,26 @@ const Chatbot: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Wellness Data Display */}
+        {Object.keys(wellnessData).length > 0 && (
+          <div className="mt-6">
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <h3 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
+                <HeartIcon className="h-4 w-4 mr-2" />
+                Wellness Insights
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                {Object.entries(wellnessData).map(([key, value]) => (
+                  <div key={key} className="bg-white p-2 rounded border">
+                    <span className="font-medium text-blue-700">{key}:</span>
+                    <span className="text-blue-600 ml-1">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Privacy Notice */}
         <div className="mt-6 text-center">
