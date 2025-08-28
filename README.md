@@ -172,6 +172,14 @@ npm run backend:build
 6. Download the JSON key file
 7. Extract the values for `backend/functions/config.ts`
 
+**Required AutoML Values:**
+- **Project ID**: Your Google Cloud project ID
+- **Model ID**: Your AutoML model ID (found in Vertex AI → Models)
+- **Endpoint**: Your model endpoint URL (found in Vertex AI → Endpoints)
+- **Region**: Your model's region (e.g., `asia-south1`, `us-central1`)
+- **Service Account Email**: The service account email from the JSON key
+- **Private Key**: The entire private key from the JSON key file
+
 #### **C. Firebase Project Settings**
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Select your project
@@ -179,17 +187,91 @@ npm run backend:build
 4. Copy the config values for `frontend/src/firebase/config.ts`
 
 ### **Step 3: Configure Files**
+
+#### **A. Backend Configuration**
 ```bash
 # Backend configuration
 cd backend/functions
 cp src/config.example.ts src/config.ts
 # Edit src/config.ts with your credentials
+```
 
+**Your `backend/functions/src/config.ts` should look like this:**
+```typescript
+export const config = {
+  gemini: {
+    apiKey: 'YOUR_ACTUAL_GEMINI_API_KEY', // From Google AI Studio
+    endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'
+  },
+  automl: {
+    endpoint: 'https://YOUR_REGION-aiplatform.googleapis.com/v1/projects/YOUR_PROJECT_ID/locations/YOUR_REGION/endpoints/YOUR_ENDPOINT_ID:predict',
+    modelId: 'YOUR_MODEL_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    region: 'YOUR_REGION'
+  },
+  serviceAccount: {
+    email: 'YOUR_SERVICE_ACCOUNT_EMAIL',
+    projectId: 'YOUR_PROJECT_ID',
+    region: 'YOUR_REGION',
+    privateKey: '-----BEGIN PRIVATE KEY-----\nYOUR_ACTUAL_PRIVATE_KEY\n-----END PRIVATE KEY-----'
+  }
+};
+```
+
+#### **B. Frontend Configuration**
+```bash
 # Frontend configuration
 cd ../../frontend/src/firebase
 cp config.example.ts config.ts
 # Edit config.ts with your Firebase settings
 ```
+
+**Your `frontend/src/firebase/config.ts` should look like this:**
+```typescript
+const firebaseConfig = {
+  apiKey: "your-actual-api-key",
+  authDomain: "your-project-id.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project-id.firebasestorage.app",
+  messagingSenderId: "your-sender-id",
+  appId: "your-app-id",
+  measurementId: "your-measurement-id"
+};
+```
+
+#### **C. Critical: Update Chatbot.tsx Project ID**
+**⚠️ IMPORTANT: You MUST update the project ID in Chatbot.tsx!**
+
+1. Open `frontend/src/components/Chatbot.tsx`
+2. Find these two lines (around line 45 and line 120):
+```typescript
+// Line ~45: Gemini API call
+const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/smart-surf-469908-n0/us-central1/gemini`, {
+
+// Line ~120: AutoML API call  
+const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/smart-surf-469908-n0/us-central1/automl`, {
+```
+
+3. **Replace `smart-surf-469908-n0` with your actual Firebase project ID**
+4. **Replace `us-central1` with your actual region if different**
+
+**Example for your project:**
+```typescript
+// If your project ID is "my-wellness-app-123"
+const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/my-wellness-app-123/us-central1/gemini`, {
+```
+
+**🚨 This step is CRITICAL - without it, the chatbot won't work!**
+
+### **📋 Setup Checklist**
+Before running the app, ensure you have:
+
+- [ ] ✅ **Backend**: `backend/functions/src/config.ts` with real credentials
+- [ ] ✅ **Frontend**: `frontend/src/firebase/config.ts` with real Firebase config  
+- [ ] ✅ **Chatbot.tsx**: Updated project ID in both API calls (lines ~45 & ~120)
+- [ ] ✅ **Firebase Emulator**: Running on port 5001
+- [ ] ✅ **Frontend**: Running on port 3000
+- [ ] ✅ **All Dependencies**: Installed with `npm run install:all`
 
 ### **Step 4: Start Development**
 ```bash
@@ -249,3 +331,21 @@ For support: support@manoday.app
 - Verify credentials in `backend/functions/config.ts`
 - Check if Firebase emulators are running
 - Ensure correct backend URL in frontend
+
+#### 5. Chatbot Not Working (Most Common Issue!)
+**🚨 If Gemini/AutoML calls are failing, check this FIRST:**
+
+1. **Verify Chatbot.tsx URLs**: Make sure you updated the project ID in both API calls
+2. **Check Browser Console**: Look for 404 errors on `/your-project-id/us-central1/gemini`
+3. **Verify Project ID**: Ensure the project ID in Chatbot.tsx matches your Firebase project ID
+4. **Check Region**: Ensure the region in Chatbot.tsx matches your Firebase Functions region
+
+**Quick Fix:**
+```typescript
+// In Chatbot.tsx, find these lines and update:
+// OLD (won't work):
+const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/gemini`...
+
+// NEW (replace with your actual project ID):
+const response = await fetch(`http://localhost:5001/YOUR_ACTUAL_PROJECT_ID/us-central1/gemini`...
+```

@@ -87,7 +87,7 @@ const Chatbot: React.FC = () => {
   // Call Vertex AI Gemini for empathetic response
   const getGeminiResponse = async (userMessage: string, history: string[], wellnessData: Partial<WellnessData>): Promise<{ response: string; extractedData: any; updatedWellnessData: any }> => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/your-project-id/us-central1/gemini`, {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/smart-surf-469908-n0/us-central1/gemini`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +161,7 @@ const Chatbot: React.FC = () => {
   // Call AutoML model for activity recommendation
   const getAutoMLRecommendation = async (wellnessData: Partial<WellnessData>): Promise<{ recommendation: string; confidence: number }> => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/your-project-id/us-central1/automl`, {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/smart-surf-469908-n0/us-central1/automl`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
