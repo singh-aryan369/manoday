@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
-  User, 
   signInWithPopup, 
-  signOut, 
-  onAuthStateChanged,
+  GoogleAuthProvider, 
+  GithubAuthProvider, 
+  OAuthProvider,
   signInAnonymously as firebaseSignInAnonymously,
-  AuthProvider as FirebaseAuthProvider
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User
 } from 'firebase/auth';
-import { auth, googleProvider, githubProvider, microsoftProvider } from '../firebase/config';
+import { auth } from '../firebase/config';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -33,45 +35,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function signInWithProvider(provider: FirebaseAuthProvider) {
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error('Authentication error:', error);
-      throw error;
-    }
-  }
-
-  async function signInWithGoogle() {
-    return signInWithProvider(googleProvider);
-  }
-
-  async function signInWithGithub() {
-    return signInWithProvider(githubProvider);
-  }
-
-  async function signInWithMicrosoft() {
-    return signInWithProvider(microsoftProvider);
-  }
-
-  async function signInAnonymously() {
-    try {
-      await firebaseSignInAnonymously(auth);
-    } catch (error) {
-      console.error('Anonymous authentication error:', error);
-      throw error;
-    }
-  }
-
-  async function logout() {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
-    }
-  }
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -80,6 +43,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return unsubscribe;
   }, []);
+
+  async function signInWithGoogle() {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('Google sign in error:', error);
+      throw error;
+    }
+  }
+
+  async function signInWithGithub() {
+    try {
+      const provider = new GithubAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('GitHub sign in error:', error);
+      throw error;
+    }
+  }
+
+  async function signInWithMicrosoft() {
+    try {
+      const provider = new OAuthProvider('microsoft.com');
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('Microsoft sign in error:', error);
+      throw error;
+    }
+  }
+
+  async function signInAnonymously() {
+    try {
+      await firebaseSignInAnonymously(auth);
+    } catch (error) {
+      console.error('Anonymous sign in error:', error);
+      throw error;
+    }
+  }
+
+  async function logout() {
+    try {
+      await firebaseSignOut(auth);
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
+  }
 
   const value = {
     currentUser,
@@ -93,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

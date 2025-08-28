@@ -1,9 +1,10 @@
 // Configuration file for API endpoints and credentials
 export const config = {
+
   // Vertex AI Gemini Configuration - Uses Firebase config with fallbacks
   gemini: {
     apiKey: process.env.FIREBASE_CONFIG_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY_HERE',
-    endpoint: process.env.FIREBASE_CONFIG_GEMINI_ENDPOINT || 'YOUR_GEMINI_ENDPOINT_HERE',
+    endpoint: process.env.FIREBASE_CONFIG_GEMINI_ENDPOINT || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent',
     model: 'gemini-2.5-flash',
     temperature: 0.7,
     maxTokens: 1024
@@ -11,18 +12,18 @@ export const config = {
   
   // AutoML Model Configuration - Uses environment variables for security
   automl: {
-    endpoint: process.env.AUTOML_ENDPOINT || 'YOUR_AUTOML_ENDPOINT_HERE',
+    endpoint: process.env.AUTOML_ENDPOINT || 'https://YOUR_REGION-aiplatform.googleapis.com/v1/projects/YOUR_PROJECT_ID/locations/YOUR_REGION/endpoints/YOUR_ENDPOINT_ID:predict',
     modelId: process.env.AUTOML_MODEL_ID || 'YOUR_MODEL_ID_HERE',
     projectId: process.env.PROJECT_ID || 'YOUR_PROJECT_ID_HERE',
-    region: process.env.REGION || 'asia-south1'
+    region: process.env.REGION || 'YOUR_REGION_HERE'
   },
   
   // Service Account Configuration - Uses environment variables for security
   serviceAccount: {
-    email: process.env.SERVICE_ACCOUNT_EMAIL || 'YOUR_SERVICE_ACCOUNT_EMAIL_HERE',
+    email: process.env.SERVICE_ACCOUNT_EMAIL || 'YOUR_SERVICE_ACCOUNT_EMAIL@YOUR_PROJECT_ID.iam.gserviceaccount.com',
     projectId: process.env.PROJECT_ID || 'YOUR_PROJECT_ID_HERE',
-    region: process.env.REGION || 'asia-south1',
-    privateKey: process.env.SERVICE_ACCOUNT_PRIVATE_KEY || 'YOUR_PRIVATE_KEY_HERE'
+    region: process.env.REGION || 'YOUR_REGION_HERE',
+    privateKey: process.env.SERVICE_ACCOUNT_PRIVATE_KEY || '-----BEGIN PRIVATE KEY-----\nYOUR_ACTUAL_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----'
   },
   
   // Wellness Data Schema (matching your AutoML model)
