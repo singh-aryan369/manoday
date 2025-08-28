@@ -1,342 +1,251 @@
-# 🧠 MANODAY - Mental Wellness AI Chatbot
+# Manoday Mental Wellness App
 
-> An intelligent, empathetic mental wellness chatbot powered by Google's Vertex AI Gemini and AutoML, designed to provide personalized mental health support and activity recommendations.
+## Overview
 
-## ✨ **Features**
+Manoday is an AI-powered mental wellness application that combines:
+- 🤖 AI-Powered Conversations using Google Gemini AI
+- 🎯 Personalized Recommendations using Google AutoML
+- 🔐 Secure Firebase Authentication
+- 📱 Modern React Frontend with Tailwind CSS
 
-- 🤖 **AI-Powered Conversations**: Natural language understanding with Gemini 2.5 Flash
-- 🧘 **Wellness Assessment**: Systematic collection of 10 wellness parameters
-- 🎯 **Personalized Recommendations**: AutoML-powered activity suggestions based on wellness profile
-- 💬 **Empathetic Responses**: Therapist-like conversation style with context awareness
-- 🔄 **Smart Parameter Extraction**: Intelligent fallbacks and context-based defaults
-- 🚀 **Real-time Processing**: Instant responses and recommendations
-- 🔒 **Secure Architecture**: Environment-based credential management
+## 🚀 Quick Start
 
-## 🏗️ **Architecture**
-
-```
-Frontend (React) ←→ Backend (Firebase Functions) ←→ Vertex AI (Gemini + AutoML)
-```
-
-### **Tech Stack**
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Backend**: Firebase Cloud Functions + Node.js
-- **AI Services**: Google Vertex AI Gemini + AutoML
-- **Authentication**: Firebase Auth
-- **Database**: Firestore (planned)
-
-## 🚀 **Quick Start**
-
-### **Prerequisites**
-- Node.js 18+ 
-- npm or yarn
+### Prerequisites
+- Node.js 18+
+- npm 8+
 - Firebase CLI
-- Google Cloud Project with Vertex AI enabled
+- Google Cloud Project with Vertex AI
 
-### **1. Clone the Repository**
+### Installation
+
 ```bash
-git clone https://github.com/yourusername/manoday-app.git
-cd manoday-app
+# Install all dependencies (frontend + backend)
+npm run install:all
+
+# Or install separately:
+npm run frontend:install    # Frontend dependencies
+npm run backend:install     # Backend dependencies
+
+# Install Firebase CLI globally (if not already installed)
+npm install -g firebase-tools
 ```
 
-### **2. Install Dependencies**
+### **3. Firebase Setup**
 ```bash
-# Install root dependencies
-npm install
+# Login to Firebase
+firebase login
 
-# Install backend dependencies
-cd backend/functions
-npm install
+# Initialize Firebase project
+firebase init
 
-# Install frontend dependencies
-cd ../../frontend
-npm install
+# Select your project and enable:
+# - Functions
+# - Firestore
+# - Hosting (optional)
 ```
 
-### **3. Set Up Credentials** ⚠️ **CRITICAL STEP!**
+## 🔧 Configuration
 
-**You MUST add real credentials to make the app work!**
+### Backend Setup
+1. Create `backend/functions/config.ts` with your API keys
+2. Set Firebase environment variables
+3. Configure Google Cloud service account
 
-#### **Option A: Environment Files (Recommended)**
-```bash
-# Backend
-cd backend/functions
-cp env.example .env
-# Edit .env with real values from CREDENTIALS.md
+### Frontend Setup
+1. Configure Firebase directly in `frontend/src/firebase/config.ts`
+2. Set backend URL for development in the code
+3. Configure OAuth providers in Firebase console
 
-# Frontend
-cd ../../frontend
-cp env.example .env
-# Edit .env with your Firebase config
-```
+## 🏗️ Architecture
 
-#### **Option B: Direct Configuration**
-Edit `backend/functions/src/config.ts` and replace placeholder values:
+### Backend (MVC Pattern)
+- **Controllers**: Handle HTTP requests
+- **Services**: Business logic (Gemini AI, AutoML)
+- **Types**: TypeScript interfaces
+
+### Frontend (Component-Based)
+- **Chatbot**: Main conversation interface
+- **AuthContext**: Authentication state management
+- **Services**: API communication
+
+## 🔌 API Endpoints
+
+### `/gemini` - AI Chat
+- **POST**: Wellness conversations with Gemini AI
+- **Input**: message, conversationHistory, wellnessData
+- **Output**: response, extractedData, updatedWellnessData
+
+### `/automl` - Recommendations
+- **POST**: Activity recommendations using AutoML
+- **Input**: features (wellness data)
+- **Output**: recommendation, confidence
+
+## 🚀 Available Scripts
+
+### Development
+- `npm run dev`: Start both frontend and backend
+- `npm run frontend:start`: Frontend only (port 3000)
+- `npm run backend:start`: Backend only (port 5001)
+
+## 🔧 Configuration Details
+
+### Backend Configuration (`backend/functions/config.ts`)
+
+## 🔧 Configuration Details
+
+### Backend Configuration
+Create `backend/functions/config.ts` with your API keys:
+
 ```typescript
-gemini: {
-  apiKey: 'YOUR_REAL_GEMINI_API_KEY', // Replace this!
-  endpoint: 'YOUR_REAL_GEMINI_ENDPOINT', // Replace this!
-  // ... rest of config
-}
+export const config = {
+  gemini: {
+    apiKey: 'YOUR_GEMINI_API_KEY',
+    endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'
+  },
+  automl: {
+    projectId: 'YOUR_GOOGLE_CLOUD_PROJECT_ID',
+    modelId: 'YOUR_AUTOML_MODEL_ID',
+    endpoint: 'YOUR_AUTOML_ENDPOINT',
+    serviceAccountEmail: 'YOUR_SERVICE_ACCOUNT_EMAIL',
+    privateKey: 'YOUR_PRIVATE_KEY'
+  }
+};
 ```
 
-### **4. Start the Backend**
+### Frontend Configuration
+1. **Copy the example config**:
 ```bash
-cd backend/functions
-npm run serve
-```
-✅ Backend will be running at `http://localhost:5001`
-
-### **5. Start the Frontend**
-```bash
-cd ../../frontend
-npm start
-```
-✅ Frontend will be running at `http://localhost:3000`
-
-### **6. Test the Integration**
-- Open `http://localhost:3000` in your browser
-- Send a message to the chatbot
-- Verify Gemini API calls work
-- Verify AutoML recommendations are generated
-
-## 🔐 **Credential Setup**
-
-### **Required Credentials**
-You need these credentials to make the app functional:
-
-1. **Vertex AI Gemini API Key**
-2. **Vertex AI AutoML Endpoint**
-3. **Google Cloud Service Account**
-4. **Firebase Project Configuration**
-
-### **Where to Get Credentials**
-- **Google Cloud Console**: Enable Vertex AI APIs
-- **Firebase Console**: Create project and get config
-- **Service Account**: Create and download private key
-
-### **Security Notes**
-- ✅ **SAFE**: `.env` files are excluded from Git
-- ✅ **SAFE**: `config.local.ts` is excluded from Git
-- ❌ **NOT SAFE**: Hardcoded credentials in source code
-- 🔒 **SECURE**: Use environment variables in production
-
-## 🧠 **Wellness Parameters**
-
-The chatbot systematically collects these 10 wellness parameters:
-
-1. **Mood** - Current emotional state
-2. **Sleep Hours** - Hours of sleep per night
-3. **Stress Level** - Current stress assessment
-4. **Academic Pressure** - Academic workload stress
-5. **Social Support** - Quality of social connections
-6. **Loneliness** - Feelings of isolation
-7. **Confidence Level** - Self-confidence assessment
-8. **Hobbies Interest** - Engagement in activities
-9. **Openness to Journaling** - Willingness to write
-10. **Professional Help Willingness** - Openness to therapy
-
-## 🤖 **AI Integration**
-
-### **Gemini 2.5 Flash**
-- **Purpose**: Natural language understanding and empathetic responses
-- **Features**: Context-aware conversations, parameter extraction
-- **Model**: `gemini-2.5-flash`
-- **Temperature**: 0.7 (balanced creativity)
-
-### **AutoML Model**
-- **Purpose**: Personalized activity recommendations
-- **Model ID**: `976725316011556864`
-- **Training**: Custom wellness dataset
-- **Output**: Tailored activity suggestions
-
-## 🔧 **Configuration**
-
-### **Environment Variables**
-```bash
-# Backend (.env)
-GEMINI_API_KEY=your_gemini_api_key
-AUTOML_ENDPOINT=your_automl_endpoint
-SERVICE_ACCOUNT_EMAIL=your_service_account_email
-SERVICE_ACCOUNT_PRIVATE_KEY=your_private_key
-
-# Frontend (.env)
-REACT_APP_BACKEND_URL=http://localhost:5001
-REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
-REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+cd frontend/src/firebase
+cp config.example.ts config.ts
 ```
 
-### **Firebase Functions Config**
-```bash
-firebase functions:config:set gemini.api_key="your_key"
-firebase functions:config:set automl.endpoint="your_endpoint"
-firebase functions:config:set service_account.email="your_email"
-firebase functions:config:set service_account.private_key="your_key"
-```
-
-## 🚀 **Deployment**
-
-### **Firebase Functions**
-```bash
-cd backend/functions
-firebase deploy --only functions
-```
-
-### **Frontend (Firebase Hosting)**
-```bash
-cd frontend
-npm run build
-firebase deploy --only hosting
-```
-
-## 🧪 **Testing**
-
-### **Backend Testing**
-```bash
-cd backend/functions
-npm test
-```
-
-### **API Testing**
-```bash
-# Test Gemini endpoint
-curl -X POST http://localhost:5001/smart-surf-469908-n0/us-central1/gemini \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello, how are you feeling today?"}'
-
-# Test AutoML endpoint
-curl -X POST http://localhost:5001/smart-surf-469908-n0/us-central1/automl \
-  -H "Content-Type: application/json" \
-  -d '{"wellnessData": {"mood": "sad", "sleepHours": 6}}'
-```
-
-## 🐛 **Troubleshooting**
-
-### **Common Issues**
-
-#### **"Cannot find module" errors**
-```bash
-# Clean install
-rm -rf node_modules package-lock.json
-npm install
-```
-
-#### **Port conflicts**
-```bash
-# Kill existing processes
-pkill -f firebase
-pkill -f "npm run serve"
-```
-
-#### **Environment variables not loading**
-- Ensure `.env` files exist in correct locations
-- Check file permissions
-- Restart development servers
-
-#### **API quota exceeded**
-- Check Google Cloud Console for quota limits
-- Implement rate limiting
-- Use fallback responses
-
-### **Debug Mode**
-Enable debug logging in `backend/functions/src/index.ts`:
+2. **Update `frontend/src/firebase/config.ts`** with your Firebase project settings:
 ```typescript
-console.log('🔍 Debug: Environment variables loaded');
-console.log('🔍 Debug: Config validation passed');
+const firebaseConfig = {
+  apiKey: "your-actual-api-key",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project.firebasestorage.app",
+  messagingSenderId: "your-sender-id",
+  appId: "your-app-id",
+  measurementId: "your-measurement-id"
+};
 ```
 
-## 📁 **Project Structure**
+3. **Get Firebase config values**:
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Select your project
+   - Click on the gear icon (⚙️) next to "Project Overview"
+   - Select "Project settings"
+   - Scroll down to "Your apps" section
+   - Copy the config values
 
-```
-manoday-app/
-├── backend/
-│   ├── functions/
-│   │   ├── src/
-│   │   │   ├── index.ts          # Main functions
-│   │   │   ├── config.ts         # Configuration
-│   │   │   └── config.local.ts   # Local credentials (gitignored)
-│   │   ├── package.json
-│   │   └── .env                  # Environment variables (gitignored)
-│   └── firestore.rules
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Chatbot.tsx       # Main chatbot component
-│   │   │   ├── LoginPage.tsx     # Authentication
-│   │   │   └── ProtectedRoute.tsx
-│   │   ├── contexts/
-│   │   │   └── AuthContext.tsx   # Authentication context
-│   │   └── App.tsx               # Main app component
-│   ├── .env                      # Frontend environment (gitignored)
-│   └── package.json
-├── .gitignore                    # Git exclusions
-├── CREDENTIALS.md               # Real credentials (gitignored)
-├── README.md                    # This file
-└── firebase.json                # Firebase configuration
+## 📁 Project Structure
+
+
+
+## 🚀 Getting Started
+
+### **Step 1: Install Dependencies**
+```bash
+# Install all dependencies
+npm run install:all
+
+# Verify installation
+npm run frontend:build
+npm run backend:build
 ```
 
-## 🤝 **Contributing**
+### **Step 2: Get Your Credentials**
 
-### **Development Workflow**
+#### **A. Google Gemini API Key**
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Click "Create API Key"
+3. Copy the API key for `backend/functions/config.ts`
+
+#### **B. Google Cloud AutoML Credentials**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Select your project
+3. Enable Vertex AI API
+4. Go to "IAM & Admin" → "Service Accounts"
+5. Create a new service account or use existing one
+6. Download the JSON key file
+7. Extract the values for `backend/functions/config.ts`
+
+#### **C. Firebase Project Settings**
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Go to Project Settings (gear icon)
+4. Copy the config values for `frontend/src/firebase/config.ts`
+
+### **Step 3: Configure Files**
+```bash
+# Backend configuration
+cd backend/functions
+cp src/config.example.ts src/config.ts
+# Edit src/config.ts with your credentials
+
+# Frontend configuration
+cd ../../frontend/src/firebase
+cp config.example.ts config.ts
+# Edit config.ts with your Firebase settings
+```
+
+### **Step 4: Start Development**
+```bash
+# Start both frontend and backend
+npm run dev
+
+# Or start separately:
+npm run frontend:start    # Frontend on http://localhost:3000
+npm run backend:start     # Backend on http://localhost:5001
+```
+
+### **Step 5: Test the Application**
+1. Open http://localhost:3000 in your browser
+2. Try logging in with Google/GitHub/Microsoft
+3. Start a conversation with the chatbot
+4. Verify AutoML recommendations work
+
+## 📚 Additional Resources
+
+- [Firebase Functions Docs](https://firebase.google.com/docs/functions)
+- [Google Gemini API](https://ai.google.dev/docs)
+- [Vertex AI AutoML](https://cloud.google.com/vertex-ai/docs/automl)
+- [React Documentation](https://react.dev/)
+
+## 🤝 Contributing
+
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-### **Code Standards**
-- Use TypeScript for type safety
-- Follow ESLint rules
-- Write meaningful commit messages
-- Test your changes locally
-
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 **Support**
-
-### **Getting Help**
-- Check the troubleshooting section above
-- Review Firebase and Google Cloud documentation
-- Open an issue on GitHub
-
-### **Useful Resources**
-- [Firebase Functions Documentation](https://firebase.google.com/docs/functions)
-- [Vertex AI Documentation](https://cloud.google.com/vertex-ai)
-- [React Documentation](https://reactjs.org/docs/)
-
-## 🎯 **Roadmap**
-
-### **Phase 1** ✅ **Complete**
-- Basic chatbot functionality
-- Gemini integration
-- AutoML recommendations
-- Wellness parameter collection
-
-### **Phase 2** 🚧 **In Progress**
-- User authentication
-- Conversation history
-- Progress tracking
-- Mobile responsiveness
-
-### **Phase 3** 📋 **Planned**
-- Multi-language support
-- Advanced analytics
-- Professional integration
-- Mobile app
+3. Commit your changes
+4. Open a Pull Request
 
 ---
 
-## 🎉 **Getting Started Checklist**
+**🌟 Built with ❤️ for mental wellness and AI innovation**
 
-- [ ] Clone the repository
-- [ ] Install dependencies
-- [ ] Set up credentials (CRITICAL!)
-- [ ] Start backend server
-- [ ] Start frontend server
-- [ ] Test chatbot functionality
-- [ ] Verify Gemini API calls
-- [ ] Verify AutoML recommendations
+For support: support@manoday.app
 
-**Happy coding! 🚀🧠✨**
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### 1. Firebase Functions Not Starting
+- Check Node.js version (should be 22): `node --version`
+- Clear npm cache: `npm cache clean --force`
+- Reinstall dependencies: `rm -rf node_modules package-lock.json && npm install`
+
+#### 2. Frontend Build Errors
+- Clear build cache: `rm -rf build/ && npm run frontend:build`
+- Check TypeScript errors: `npx tsc --noEmit`
+
+#### 3. Authentication Issues
+- Verify Firebase config in `frontend/src/firebase/config.ts`
+- Check if OAuth providers are enabled in Firebase Console
+- Ensure correct project ID and API keys
+
+#### 4. Backend API Errors
+- Verify credentials in `backend/functions/config.ts`
+- Check if Firebase emulators are running
+- Ensure correct backend URL in frontend

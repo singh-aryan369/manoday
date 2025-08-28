@@ -87,7 +87,7 @@ const Chatbot: React.FC = () => {
   // Call Vertex AI Gemini for empathetic response
   const getGeminiResponse = async (userMessage: string, history: string[], wellnessData: Partial<WellnessData>): Promise<{ response: string; extractedData: any; updatedWellnessData: any }> => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/smart-surf-469908-n0/us-central1/gemini`, {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/your-project-id/us-central1/gemini`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,11 +103,33 @@ const Chatbot: React.FC = () => {
         throw new Error('Gemini API call failed');
       }
       
-      const data = await response.json();
+      const result = await response.json();
+      
+      // Handle new MVC response format: { success: true, data: {...} }
+      if (result.success && result.data) {
+        // Additional safety: clean any remaining JSON from the response
+        let cleanResponse = result.data.response;
+        if (typeof cleanResponse === 'string') {
+          cleanResponse = cleanResponse
+            .replace(/```json\s*\{[\s\S]*?\}\s*```/g, '') // Remove ```json blocks
+            .replace(/```\s*\{[\s\S]*?\}\s*```/g, '') // Remove any ``` blocks with JSON
+            .replace(/\{[\s\S]*?"extractedData"[\s\S]*?\}/g, '') // Remove any JSON with extractedData
+            .replace(/\n\s*\n/g, '\n') // Clean up extra newlines
+            .trim();
+        }
+        
+        return {
+          response: cleanResponse,
+          extractedData: result.data.extractedData || {},
+          updatedWellnessData: result.data.updatedWellnessData || wellnessData
+        };
+      }
+      
+      // Fallback to old format for backward compatibility
       return {
-        response: data.response,
-        extractedData: data.extractedData || {},
-        updatedWellnessData: data.updatedWellnessData || wellnessData
+        response: result.response,
+        extractedData: result.extractedData || {},
+        updatedWellnessData: result.updatedWellnessData || wellnessData
       };
     } catch (error) {
       console.error('Gemini API error:', error);
@@ -139,7 +161,7 @@ const Chatbot: React.FC = () => {
   // Call AutoML model for activity recommendation
   const getAutoMLRecommendation = async (wellnessData: Partial<WellnessData>): Promise<{ recommendation: string; confidence: number }> => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/smart-surf-469908-n0/us-central1/automl`, {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL || 'http://localhost:5001'}/your-project-id/us-central1/automl`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,8 +175,21 @@ const Chatbot: React.FC = () => {
         throw new Error('AutoML API call failed');
       }
       
-      const data = await response.json();
-      return { recommendation: data.recommendation || 'Meditation and Yoga', confidence: data.confidence || 0.8 };
+      const result = await response.json();
+      
+      // Handle new MVC response format: { success: true, data: {...} }
+      if (result.success && result.data) {
+        return { 
+          recommendation: result.data.recommendation || 'Meditation and Yoga', 
+          confidence: result.data.confidence || 0.8 
+        };
+      }
+      
+      // Fallback to old format for backward compatibility
+      return { 
+        recommendation: result.recommendation || 'Meditation and Yoga', 
+        confidence: result.confidence || 0.8 
+      };
     } catch (error) {
       console.error('AutoML API error:', error);
       // Fallback recommendation based on mood
@@ -206,7 +241,8 @@ const Chatbot: React.FC = () => {
 
     try {
       // Get empathetic response from Gemini (pass cumulative wellness data, not just extracted)
-      const geminiResult = await getGeminiResponse(inputMessage, newHistory, updatedWellnessData);
+      const geminiResult = await 
+      getGeminiResponse(inputMessage, newHistory, updatedWellnessData);
       
       // Update wellness data with what Gemini extracted
       if (geminiResult.extractedData && Object.keys(geminiResult.extractedData).length > 0) {
@@ -232,11 +268,32 @@ const Chatbot: React.FC = () => {
                                         inputMessage.toLowerCase().includes('suggest me') || 
                                         inputMessage.toLowerCase().includes('help me') ||
                                         inputMessage.toLowerCase().includes('recommend') ||
-                                        inputMessage.toLowerCase().includes('suggest');
+                                        inputMessage.toLowerCase().includes('suggest') ||
+                                        inputMessage.toLowerCase().includes('what now') ||
+                                        inputMessage.toLowerCase().includes('now what') ||
+                                        inputMessage.toLowerCase().includes('what next') ||
+                                        inputMessage.toLowerCase().includes('next step');
       
-      // Trigger AutoML ONLY if user asks OR we have ALL 10 parameters
-      if (userAsksForRecommendation || hasAllParams) {
-        // Add a small delay to make the conversation feel more natural
+      // Log parameter collection status for debugging
+      console.log('Parameter collection status:', {
+        collected: collectedParams.length,
+        total: requiredParams.length,
+        missing: requiredParams.filter(param => !updatedWellnessData[param as keyof typeof updatedWellnessData]),
+        hasAll: hasAllParams,
+        currentData: updatedWellnessData
+      });
+      
+      // Trigger AutoML automatically if we have ALL 10 parameters OR if user asks OR if we're very close (9/10)
+      const isVeryClose = collectedParams.length >= 9;
+      
+      // If user asks follow-up questions like "what now", try to trigger recommendation even if missing 1-2 parameters
+      const shouldTriggerRecommendation = userAsksForRecommendation || hasAllParams || isVeryClose || 
+        (collectedParams.length >= 8 && (inputMessage.toLowerCase().includes('what now') || inputMessage.toLowerCase().includes('now what')));
+      
+      if (shouldTriggerRecommendation) {
+        // If we have all parameters, trigger immediately without delay
+        const delay = hasAllParams ? 0 : 1000;
+        
         setTimeout(async () => {
           try {
             const recommendation = await getAutoMLRecommendation(updatedWellnessData);
@@ -244,7 +301,7 @@ const Chatbot: React.FC = () => {
             const recommendationMessage: Message = {
               id: Date.now() + 2,
               text: hasAllParams 
-                ? `I would recommend you this: **${recommendation.recommendation}** 💡`
+                ? `Perfect! We've covered everything I needed to know. Based on our conversation, I think this might help you: **${recommendation.recommendation}** 💡`
                 : `Based on our conversation, I think this might help you: **${recommendation.recommendation}** 💡`,
               sender: 'bot',
               timestamp: new Date(),
@@ -252,19 +309,11 @@ const Chatbot: React.FC = () => {
               metadata: { recommendation: recommendation.recommendation, confidence: recommendation.confidence }
             };
 
-            const followUpMessage: Message = {
-              id: Date.now() + 3,
-              text: "Would you like to learn more about this activity?",
-              sender: 'bot',
-              timestamp: new Date(),
-              type: 'message'
-            };
-
-            setMessages(prev => [...prev, recommendationMessage, followUpMessage]);
+            setMessages(prev => [...prev, recommendationMessage]);
           } catch (error) {
             console.error('Error getting AutoML recommendation:', error);
           }
-        }, 1000);
+        }, delay);
       }
 
     } catch (error) {
@@ -355,6 +404,15 @@ const Chatbot: React.FC = () => {
                           <p className="text-xs font-medium text-green-800">
                             💡 Recommended Activity: {message.metadata.recommendation}
                           </p>
+                          <button 
+                            className="mt-2 w-full px-3 py-2 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
+                            onClick={() => {
+                              // TODO: Navigate to new route when implemented
+                              console.log(`Navigate to activity: ${message.metadata?.recommendation}`);
+                            }}
+                          >
+                            {message.metadata?.recommendation}
+                          </button>
                         </div>
                       )}
                     </div>

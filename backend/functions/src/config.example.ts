@@ -3,7 +3,7 @@ export const config = {
 
   // Vertex AI Gemini Configuration - Uses Firebase config with fallbacks
   gemini: {
-    apiKey: process.env.FIREBASE_CONFIG_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY',
+    apiKey: process.env.FIREBASE_CONFIG_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY_HERE',
     endpoint: process.env.FIREBASE_CONFIG_GEMINI_ENDPOINT || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
     model: 'gemini-2.5-flash',
     temperature: 0.7,
