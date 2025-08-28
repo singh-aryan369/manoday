@@ -23,6 +23,11 @@ secrets.md
 *.pfx
 config.local.ts
 
+# Real config files with credentials
+backend/functions/src/config.ts
+frontend/src/firebase/config.ts
+config.ts
+
 # Firebase
 .firebase/
 firebase-debug.log
