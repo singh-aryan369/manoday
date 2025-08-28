@@ -314,6 +314,7 @@ For support: support@manoday.app
 ### Common Issues
 
 #### 1. Firebase Functions Not Starting
+- Check if firebase login command has been used.: `firebase --version`
 - Check Node.js version (should be 22): `node --version`
 - Clear npm cache: `npm cache clean --force`
 - Reinstall dependencies: `rm -rf node_modules package-lock.json && npm install`
