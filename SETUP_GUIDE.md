@@ -11,6 +11,34 @@ This guide documents the complete setup process for the Manoday mental wellness 
 
 ## 🔧 Step-by-Step Setup
 
+### **Step 0: Git-Safe Configuration (IMPORTANT!)**
+The repository is now git-safe with placeholder credentials. Before running, you MUST:
+
+1. **Backend Configuration**
+   ```bash
+   cd backend/functions
+   cp env.example .env
+   # Edit .env with your actual credentials:
+   # - GEMINI_API_KEY
+   # - AUTOML_ENDPOINT, AUTOML_MODEL_ID, etc.
+   # - SERVICE_ACCOUNT_EMAIL, SERVICE_ACCOUNT_PRIVATE_KEY
+   # - FIREBASE_PROJECT_ID
+   ```
+
+2. **Frontend Configuration**
+   ```bash
+   cd frontend
+   cp src/firebase/config.example.ts src/firebase/config.ts
+   # Edit config.ts with your actual Firebase credentials
+   ```
+
+3. **Update Project ID in Multiple Places**
+   ```bash
+   # Update .firebaserc
+   # Update frontend/src/components/Chatbot.tsx (lines 102, 143, 197, 271)
+   # Replace YOUR_PROJECT_ID with your actual Firebase project ID
+   ```
+
 ### **Step 1: Install Dependencies**
 
 #### Root Dependencies
@@ -88,14 +116,14 @@ firebase emulators:start --only functions,firestore,ui
 
 **Why Root Directory Matters:**
 - `.firebaserc` file is in root directory
-- Contains correct project ID: `YOUR_PROJECT_ID`
+- Contains correct project ID: `smart-surf-469908-n0`
 - Ensures backend and frontend use same project
 
 #### **❌ Don't Use This (Wrong Project ID):**
 ```bash
 cd backend/functions
 npm run serve
-# This uses my-first-project-9e0be instead of YOUR_PROJECT_ID
+# This uses my-first-project-9e0be instead of smart-surf-469908-n0
 ```
 
 ### **Step 5: Start Frontend**
@@ -118,7 +146,7 @@ npm start
 
 ### **1. Check Backend Health**
 ```bash
-curl http://localhost:5001/YOUR_PROJECT_ID/us-central1/health
+curl http://localhost:5001/smart-surf-469908-n0/us-central1/health
 ```
 
 **Expected Response:**
@@ -137,11 +165,11 @@ curl http://localhost:5001/YOUR_PROJECT_ID/us-central1/health
 ### **2. Verify Project ID in Emulator Logs**
 Look for this in your terminal:
 ```
-✔  functions[us-central1-gemini]: http function initialized (http://127.0.0.1:5001/YOUR_PROJECT_ID/us-central1/gemini).
-✔  functions[us-central1-automl]: http function initialized (http://127.0.0.1:5001/YOUR_PROJECT_ID/us-central1/automl).
+✔  functions[us-central1-gemini]: http function initialized (http://127.0.0.1:5001/smart-surf-469908-n0/us-central1/gemini).
+✔  functions[us-central1-automl]: http function initialized (http://127.0.0.1:5001/smart-surf-469908-n0/us-central1/automl).
 ```
 
-**✅ Correct:** `YOUR_PROJECT_ID`
+**✅ Correct:** `smart-surf-469908-n0`
 **❌ Wrong:** `my-first-project-9e0be`
 
 ### **3. Test Frontend Build**
@@ -205,7 +233,7 @@ manoday-Eeshan/
 ```json
 {
   "projects": {
-    "default": "YOUR_PROJECT_ID"
+    "default": "smart-surf-469908-n0"
   }
 }
 ```
@@ -214,8 +242,8 @@ manoday-Eeshan/
 ```typescript
 const firebaseConfig = {
   apiKey: "Abcsdhwendnfmfjiei4893930230",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-projectId: "YOUR_PROJECT_ID",
+  authDomain: "smart-surf-469908-n0.firebaseapp.com",
+projectId: "smart-surf-469908-n0",
   // ... other config
 };
 ```
@@ -290,15 +318,15 @@ firebase deploy --only hosting
 
 **Expected Output:**
 ```
-✔  hosting[YOUR_PROJECT_ID]: release complete
-Hosting URL: https://YOUR_PROJECT_ID.web.app
+✔  hosting[smart-surf-469908-n0]: release complete
+Hosting URL: https://smart-surf-469908-n0.web.app
 ```
 
 ### **Step 3: Verify Production URLs**
 
 | Service | Production URL |
 |---------|----------------|
-| **Frontend** | `https://YOUR_PROJECT_ID.web.app` |
+| **Frontend** | `https://smart-surf-469908-n0.web.app` |
 | **Gemini Function** | `https://gemini-tipjtjdkwq-uc.a.run.app` |
 | **AutoML Function** | `https://automl-tipjtjdkwq-uc.a.run.app` |
 | **Store Insights** | `https://storeencryptedinsights-tipjtjdkwq-uc.a.run.app` |
@@ -334,27 +362,27 @@ npm start
 // In frontend/src/components/Chatbot.tsx, change ALL API calls:
 
 // 1. Line 197: Gemini API call
-const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/gemini`, {
+const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/gemini`, {
   // instead of:
-  // https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/gemini
+  // https://us-central1-smart-surf-469908-n0.cloudfunctions.net/gemini
 });
 
 // 2. Line 271: AutoML API call  
-const recommendation = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/automl`, {
+const recommendation = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/automl`, {
   // instead of:
-  // https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/automl
+  // https://us-central1-smart-surf-469908-n0.cloudfunctions.net/automl
 });
 
 // 3. Line 143: Store Encrypted Insights
-const storeResponse = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/storeEncryptedInsights`, {
+const storeResponse = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/storeEncryptedInsights`, {
   // instead of:
-  // https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/storeEncryptedInsights
+  // https://us-central1-smart-surf-469908-n0.cloudfunctions.net/storeEncryptedInsights
 });
 
 // 4. Line 102: Get Encrypted Insights
-const getResponse = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/getEncryptedInsights`, {
+const getResponse = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/getEncryptedInsights`, {
   // instead of:
-  // https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/getEncryptedInsights
+  // https://us-central1-smart-surf-469908-n0.cloudfunctions.net/getEncryptedInsights
 });
 ```
 
@@ -407,13 +435,13 @@ Before deploying, ensure:
 - [ ] **Frontend builds successfully** (`npm run build`)
 - [ ] **All TypeScript errors resolved**
 - [ ] **Environment variables configured**
-- [ ] **Firebase project selected** (`YOUR_PROJECT_ID`)
+- [ ] **Firebase project selected** (`smart-surf-469908-n0`)
 - [ ] **API keys valid** (Gemini, Firebase)
 
 ## 🔍 Post-Deployment Testing
 
 ### **1. Test Production Frontend**
-- Visit: `https://YOUR_PROJECT_ID.web.app`
+- Visit: `https://smart-surf-469908-n0.web.app`
 - Verify all features work
 - Check browser console for errors
 
@@ -459,7 +487,7 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
 
 - **Node Version:** Project requires Node 22, but works with Node 23
 - **Firebase CLI:** Must be installed globally (`npm install -g firebase-tools`)
-- **Project ID:** Always use `YOUR_PROJECT_ID` (not `my-first-project-9e0be`)
+- **Project ID:** Always use `smart-surf-469908-n0` (not `my-first-project-9e0be`)
 - **CORS:** Already configured in backend - no additional setup needed
 - **Environment Variables:** Using fallback values from config.ts files
 
@@ -468,7 +496,7 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
 ### **What Happens When Someone Downloads Your Code:**
 
 **✅ Your App Stays Unchanged:**
-- Your deployed app (`YOUR_PROJECT_ID.web.app`) remains exactly the same
+- Your deployed app (`smart-surf-469908-n0.web.app`) remains exactly the same
 - Your Firebase project, database, and functions are completely untouched
 - Your users and data remain secure and isolated
 
@@ -486,7 +514,7 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
    ```typescript
    // frontend/src/firebase/config.ts
    const firebaseConfig = {
-     projectId: 'THEIR_PROJECT_ID', // Not YOUR_PROJECT_ID
+     projectId: 'THEIR_PROJECT_ID', // Not smart-surf-469908-n0
      // ... other config
    };
    
@@ -502,22 +530,22 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
 4. **Update API URLs in Chatbot.tsx:**
    ```typescript
    // Change ALL fetch URLs from production to local emulators:
-   // From: https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/
-// To: http://localhost:5001/YOUR_PROJECT_ID/us-central1/
+   // From: https://us-central1-smart-surf-469908-n0.cloudfunctions.net/
+// To: http://localhost:5001/smart-surf-469908-n0/us-central1/
    
    // This affects 4 API calls with EXACT line numbers:
    
    // Line 102: getEncryptedInsights
-   const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/getEncryptedInsights`, {
+   const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/getEncryptedInsights`, {
    
    // Line 143: storeEncryptedInsights  
-   const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/storeEncryptedInsights`, {
+   const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/storeEncryptedInsights`, {
    
    // Line 197: gemini
-   const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/gemini`, {
+   const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/gemini`, {
    
    // Line 271: automl
-   const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/automl`, {
+   const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/automl`, {
    ```
 4. **Deploy to Their Project:**
    ```bash
@@ -535,7 +563,7 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
 
 ### **Result: Two Completely Separate Apps**
 ```
-Your App: YOUR_PROJECT_ID.web.app
+Your App: smart-surf-469908-n0.web.app
 ├── Your Firebase project
 ├── Your database & users
 ├── Your functions & API keys

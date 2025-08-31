@@ -90,6 +90,28 @@ cd frontend && npm start
 
 ## 🔧 Configuration
 
+### **⚠️ IMPORTANT: Git-Safe Setup Required**
+
+This repository uses placeholder credentials for security. **Before running, you MUST configure:**
+
+1. **Backend Environment Variables**
+   ```bash
+   cd backend/functions
+   cp env.example .env
+   # Fill in: GEMINI_API_KEY, AUTOML_*, SERVICE_ACCOUNT_*, FIREBASE_PROJECT_ID
+   ```
+
+2. **Frontend Firebase Config**
+   ```bash
+   cd frontend
+   cp src/firebase/config.example.ts src/firebase/config.ts
+   # Fill in your Firebase project credentials
+   ```
+
+3. **Update Project ID in Multiple Files**
+   - `.firebaserc` - Replace `YOUR_FIREBASE_PROJECT_ID_HERE`
+   - `frontend/src/components/Chatbot.tsx` - Replace `YOUR_PROJECT_ID` in API URLs (lines 102, 143, 197, 271)
+
 ### **Required API Keys & Credentials**
 
 #### **1. Google Gemini API**
@@ -131,9 +153,9 @@ export const config = {
 ```typescript
 const firebaseConfig = {
   apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  authDomain: "smart-surf-469908-n0.firebaseapp.com",
+projectId: "smart-surf-469908-n0",
+storageBucket: "smart-surf-469908-n0.appspot.com",
   messagingSenderId: "YOUR_SENDER_ID",
   appId: "YOUR_APP_ID"
 };
@@ -227,7 +249,7 @@ firebase deploy --only hosting
 ✔  functions[automl(us-central1)] Successful update operation.
 ✔  functions[storeEncryptedInsights(us-central1)] Successful update operation.
 ✔  functions[getEncryptedInsights(us-central1)] Successful update operation.
-✔  hosting[YOUR_PROJECT_ID]: release complete
+✔  hosting[smart-surf-469908-n0]: release complete
 ```
 
 ## 🧪 Testing
@@ -245,16 +267,16 @@ npm start
 ```typescript
 // Update these lines in Chatbot.tsx:
 // Line 102: getEncryptedInsights
-const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/getEncryptedInsights`, {
+const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/getEncryptedInsights`, {
 
 // Line 143: storeEncryptedInsights  
-const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/storeEncryptedInsights`, {
+const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/storeEncryptedInsights`, {
 
 // Line 197: gemini
-const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/gemini`, {
+const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/gemini`, {
 
 // Line 271: automl
-const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/automl`, {
+const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/automl`, {
 ```
 
 ### **Testing Scenarios**
@@ -489,7 +511,7 @@ firebase deploy --only hosting    # Frontend
 ```
 
 ### **Key URLs**
-- **Production**: `https://YOUR_PROJECT_ID.web.app`
+- **Production**: `https://smart-surf-469908-n0.web.app`
 - **Local Frontend**: `http://localhost:3000`
 - **Local Backend**: `http://localhost:5001`
 - **Emulator UI**: `http://localhost:4001`

@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+// Example Firebase configuration - Copy this to config.ts and fill in your values
 const firebaseConfig = {
   apiKey: "YOUR_FIREBASE_API_KEY_HERE",
   authDomain: "YOUR_FIREBASE_AUTH_DOMAIN_HERE",

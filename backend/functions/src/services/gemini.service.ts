@@ -123,7 +123,7 @@ export class GeminiService {
         if (response.status === 429) {
           console.log('🚨 QUOTA EXCEEDED - USING FALLBACK RESPONSE 🚨');
           logger.warn('🚨 QUOTA EXCEEDED - USING FALLBACK RESPONSE 🚨');
-          const fallbackResponse = this.getIntelligentFallback(request.message, request.conversationHistory, request.wellnessData);
+          const fallbackResponse = await this.getIntelligentFallback(request.message, request.conversationHistory, request.wellnessData);
           console.log('📝 FALLBACK RESPONSE:', fallbackResponse);
           logger.info('📝 FALLBACK RESPONSE:', { fallbackResponse });
           return {
@@ -139,7 +139,7 @@ export class GeminiService {
 
       const data = await response.json();
       const geminiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 
-                           this.getIntelligentFallback(request.message, request.conversationHistory, request.wellnessData);
+                           await this.getIntelligentFallback(request.message, request.conversationHistory, request.wellnessData);
       
       // Calculate next parameter for strict sequential extraction
       const parameterOrder = ['mood', 'sleepHours', 'stressLevel', 'academicPressure', 'socialSupport', 'loneliness', 'confidenceLevel', 'hobbiesInterest', 'opennessToJournaling', 'willingForProfessionalHelp'];
@@ -160,7 +160,7 @@ export class GeminiService {
         logger.info('⚠️ Gemini extraction failed, using intelligent fallback...');
         
         // Use intelligent fallback that maintains conversation flow
-        const fallbackResponse = this.getIntelligentFallback(request.message, request.conversationHistory, request.wellnessData);
+        const fallbackResponse = await this.getIntelligentFallback(request.message, request.conversationHistory, request.wellnessData);
         return {
           response: fallbackResponse,
           extractedData: {},
@@ -208,7 +208,7 @@ export class GeminiService {
       console.log('🚨 GEMINI API ERROR - USING FALLBACK RESPONSE 🚨');
       console.log('❌ Error details:', error);
       logger.error('🚨 GEMINI API ERROR - USING FALLBACK RESPONSE 🚨', error);
-      const fallbackResponse = this.getIntelligentFallback(request.message, request.conversationHistory, request.wellnessData);
+      const fallbackResponse = await this.getIntelligentFallback(request.message, request.conversationHistory, request.wellnessData);
       console.log('📝 FALLBACK RESPONSE:', fallbackResponse);
       logger.info('📝 FALLBACK RESPONSE:', { fallbackResponse });
       return {
@@ -225,17 +225,33 @@ export class GeminiService {
     const history = conversationHistory.join('\n');
     const effectiveWellnessData = wellnessData || {};
     
-    // Determine which parameter to collect next
+    // Determine which parameter to collect next - STRICT ORDER ENFORCEMENT
     const parameterOrder = ['mood', 'sleepHours', 'stressLevel', 'academicPressure', 'socialSupport', 'loneliness', 'confidenceLevel', 'hobbiesInterest', 'opennessToJournaling', 'willingForProfessionalHelp'];
     
     let nextParameter = null;
     let collectedCount = 0;
     
+    // STRICT SEQUENTIAL CHECK - Never skip parameters
     for (const param of parameterOrder) {
       if (effectiveWellnessData[param]) {
         collectedCount++;
+        logger.info(`✅ Parameter ${param} already collected: ${effectiveWellnessData[param]}`);
       } else if (!nextParameter) {
         nextParameter = param;
+        logger.info(`🎯 NEXT PARAMETER TO COLLECT: ${param} (step ${parameterOrder.indexOf(param) + 1} of 10)`);
+        break; // Stop at first missing parameter - don't skip ahead
+      }
+    }
+    
+    // WORKFLOW VALIDATION - Ensure we're not jumping around
+    if (nextParameter) {
+      const expectedIndex = collectedCount;
+      const actualIndex = parameterOrder.indexOf(nextParameter);
+      if (expectedIndex !== actualIndex) {
+        logger.warn(`🚨 WORKFLOW BREACH DETECTED: Expected step ${expectedIndex + 1}, but trying to collect step ${actualIndex + 1}`);
+        // Force correct parameter
+        nextParameter = parameterOrder[expectedIndex];
+        logger.info(`🔧 WORKFLOW CORRECTED: Now collecting ${nextParameter} (step ${expectedIndex + 1})`);
       }
     }
     
@@ -306,48 +322,34 @@ Remember: Compassionate, empathetic, supportive - like a close friend who truly 
     // DON'T mark as asked yet - wait until we successfully extract data
     // this.askedParameters.add(nextParameter); // MOVED TO AFTER SUCCESSFUL EXTRACTION
 
-    return `SUPERIOR GEMINI AI CHATBOT PROMPT - HANDLE ALL SCENARIOS INTELLIGENTLY
+    return `You are a warm, empathetic AI friend helping track mental wellness. 
 
-CORE IDENTITY: You are a warm, empathetic AI friend helping youth track their mental wellness. Your primary goal is to collect 10 wellness parameters through natural, flowing conversations while providing emotional support.
+🚨 CRITICAL WORKFLOW RULE - NEVER BREAK THIS ORDER:
+1. mood → 2. sleepHours → 3. stressLevel → 4. academicPressure → 5. socialSupport → 6. loneliness → 7. confidenceLevel → 8. hobbiesInterest → 9. opennessToJournaling → 10. willingForProfessionalHelp
 
-🚨 CRITICAL WORKFLOW RULE: You are currently collecting parameter: ${nextParameter}
-🚨 You MUST ONLY extract and confirm this ONE parameter
-🚨 You MUST NOT extract, mention, or assign values to any other parameters
-🚨 You MUST NOT jump ahead to future parameters
-🚨 You MUST NOT guess or assume values for parameters that haven't been asked about yet
+CURRENT TASK: Collect parameter: ${nextParameter}
 
-CRITICAL INTELLIGENCE RULES:
-1. YOU ARE THE PRIMARY INTELLIGENCE - Handle 95% of scenarios through your own reasoning
-2. ALWAYS extract a value for the current parameter - NEVER return empty extractedData
-3. Use conversation history, context clues, and intelligent inference FIRST
-4. When your own reasoning fails, IMMEDIATELY use the hardcoded scenarios below
-5. NEVER skip parameters or move to next one without extracting current one
-6. Maintain empathetic conversation flow while ensuring data extraction
-7. 🚫 NEVER extract future parameters - only focus on the current parameter being asked
-8. 🚫 NEVER guess or assign values to parameters that haven't been asked about yet
-9. 🎯 Stay focused on ONE parameter at a time - the current one
-10. 🚨 CRITICAL: If you can't extract a value, use the hardcoded scenarios below - NEVER return empty
+USER MESSAGE: "${message}"
+CONVERSATION: ${history}
+COLLECTED SO FAR: ${JSON.stringify(effectiveWellnessData)}
 
-CURRENT PARAMETER TO COLLECT: ${nextParameter}
-USER'S MESSAGE: "${message}"
-CONVERSATION HISTORY: ${history}
-ALREADY COLLECTED: ${JSON.stringify(effectiveWellnessData)}
+INSTRUCTIONS:
+1. Extract the ${nextParameter} value from the user's response
+2. Provide a warm, empathetic response (4-6 lines)
+3. Ask about the next parameter naturally but definitely ask for next parameter never get stuck in conversation
+4. Return JSON at the end: {code}{"extractedData": {"${nextParameter}": "EXTRACTED_VALUE"}}{/code}
 
-PARAMETER EXTRACTION WORKFLOW:
-STRICT SEQUENCE: 1. mood → 2. sleepHours → 3. stressLevel → 4. academicPressure → 5. socialSupport → 6. loneliness → 7. confidenceLevel → 8. hobbiesInterest → 9. opennessToJournaling → 10. willingForProfessionalHelp
-
-COMPREHENSIVE MAPPING SCENARIOS FOR ${nextParameter}:
-
+MAPPING GUIDELINES:
 ${this.getComprehensiveMappingForParameter(nextParameter)}
 
+🚨 WORKFLOW ENFORCEMENT:
+- You are currently on parameter ${nextParameter}
+- After extracting this parameter, you MUST ask about the next one in sequence
+- NEVER skip parameters or jump around
+- NEVER ask about a parameter that comes later in the sequence
+- ALWAYS follow the exact order above
 
-
-INTELLIGENT EXTRACTION PROCESS:
-STEP 1: Think about the user's response and conversation context
-STEP 2: Use your own reasoning to map the response to a valid value
-STEP 3: If unclear, IMMEDIATELY use the hardcoded scenarios above
-STEP 4: If still unclear, make intelligent inference based on emotional context
-STEP 5: NEVER return empty - always extract something using the scenarios above
+EXAMPLE: If user says "I feel lonely" and you're collecting loneliness (step 6), extract "Often" and ask about confidence level (step 7) next.
 
 CONTEXT-AWARE INTELLIGENCE:
 - Consider user's previous responses and overall conversation tone
@@ -439,7 +441,7 @@ CRITICAL: You are a compassionate friend who genuinely cares. Always extract dat
       const jsonMatch = geminiResponse.match(/\{code\}\s*(\{[\s\S]*?\})\s*\{\/code\}/);
       if (jsonMatch) {
         try {
-          const jsonData = JSON.parse(jsonMatch[1]);
+        const jsonData = JSON.parse(jsonMatch[1]);
           logger.info(`✅ JSON parsed successfully:`, jsonData);
           
           if (jsonData.extractedData && requestedParameter && jsonData.extractedData[requestedParameter]) {
@@ -674,7 +676,7 @@ CRITICAL: You are a compassionate friend who genuinely cares. Always extract dat
   }
 
   // Intelligent fallback that follows conversation flow and NEVER asks old questions
-  private getIntelligentFallback(message: string, conversationHistory: string[], wellnessData: any): string {
+  private async getIntelligentFallback(message: string, conversationHistory: string[], wellnessData: any): Promise<string> {
     console.log('🔄 GENERATING INTELLIGENT FALLBACK RESPONSE');
     console.log('📨 User message:', message);
     console.log('📊 Current wellness data:', wellnessData);
@@ -710,114 +712,57 @@ CRITICAL: You are a compassionate friend who genuinely cares. Always extract dat
       return "Thank you for sharing so much with me. Based on everything you've told me, I'd like to help you find some activities that might be beneficial. Let me think about what could work best for you.";
     }
 
-    // CRITICAL: Always try to extract data first, never ask questions
-    const extractedData = this.extractDataFromUserMessage(message, wellnessData, nextParameter);
-    
-    if (Object.keys(extractedData).length > 0) {
-      // We extracted data! Acknowledge and move to next parameter
-      const extractedParam = Object.keys(extractedData)[0];
-      const extractedValue = extractedData[extractedParam as keyof typeof extractedData];
+      // ENHANCED: Use Gemini for fallback instead of hardcoded logic
+      // This ensures Gemini always controls the conversation flow
+      logger.info('🔄 Gemini fallback needed - calling Gemini API directly');
       
-      // Find the next parameter after this one
-      const currentIndex = parameterOrder.indexOf(extractedParam);
-      let nextNextParameter = null;
-      if (currentIndex < parameterOrder.length - 1) {
-        nextNextParameter = parameterOrder[currentIndex + 1];
+      try {
+        // Call Gemini directly for fallback response
+        const fallbackPrompt = `You are a supportive friend continuing a conversation. The user said: "${message}". 
+        
+Based on the conversation history and current wellness data: ${JSON.stringify(wellnessData)}
+
+Please provide a natural, empathetic response that:
+1. Acknowledges what they said
+2. Extracts the wellness parameter if possible
+3. Continues the conversation naturally
+4. Returns response in this format: {code}{"extractedData": {"PARAMETER_NAME": "EXTRACTED_VALUE"}}{/code}
+
+Be warm, understanding, and continue the conversation flow naturally.`;
+        
+        const GEMINI_API_KEY = config.gemini.apiKey;
+        const GEMINI_ENDPOINT = config.gemini.endpoint;
+        
+        const fallbackResponse = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: fallbackPrompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+          })
+        });
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          const fallbackText = fallbackData.candidates?.[0]?.content?.parts?.[0]?.text || 
+            "I understand what you're saying. Let me ask about the next important aspect of your wellness.";
+          
+          // Try to extract data from fallback response
+          // const extractedData = this.parseGeminiResponse(fallbackText, nextParameter || undefined);
+          
+          return fallbackText.replace(/\{code\}[\s\S]*?\{\/code\}/g, '').trim();
+        }
+      } catch (fallbackError) {
+        logger.error('Fallback Gemini call failed:', fallbackError);
       }
       
-      if (nextNextParameter) {
-        return `I understand. Based on what you've shared, I can see that your ${extractedParam} is ${extractedValue}. Now, let me ask about ${nextNextParameter}: ${this.getParameterQuestion(nextNextParameter)}`;
-      } else {
-        return `Perfect! I've gathered all the information I need about your wellness. Based on what you've shared, I think I can help you find some activities that might be beneficial. Let me think about what could work best for you.`;
-      }
-    }
-
-    // ENHANCED FALLBACK: If we can't extract data, make intelligent guess based on context
-    // This prevents the system from getting stuck and asking the same question repeatedly
-    const intelligentGuess = this.makeIntelligentGuess(message, nextParameter);
-    if (intelligentGuess) {
-      const nextNextParameter = this.getNextParameter(nextParameter, parameterOrder);
-      if (nextNextParameter) {
-        return `I understand. Based on what you've shared, I can see that your ${nextParameter} is ${intelligentGuess}. Now, let me ask about ${nextNextParameter}: ${this.getParameterQuestion(nextNextParameter)}`;
-      } else {
-        return `Perfect! I've gathered all the information I need about your wellness. Based on what you've shared, I think I can help you find some activities that might be beneficial. Let me think about what could work best for you.`;
-      }
-    }
-
-    // ONLY if we absolutely cannot extract anything, then ask a question
-    // But this should rarely happen with our improved keyword matching and intelligent guessing
-    const question = this.getParameterQuestion(nextParameter);
-    console.log('✅ FALLBACK QUESTION GENERATED (rare case):', question);
-    logger.info('Intelligent fallback - returning question (rare case):', { question });
-    return question;
+      // Ultimate fallback - simple acknowledgment
+      return "I understand what you're saying. Let me ask about the next important aspect of your wellness.";
   }
 
-  // Make intelligent guess when user response is unclear
-  private makeIntelligentGuess(message: string, parameter: string): string | null {
-    const lowerMessage = message.toLowerCase();
-    
-    // Context-aware intelligent guessing based on parameter
-    switch (parameter) {
-      case 'mood':
-        if (lowerMessage.includes('not good') || lowerMessage.includes('bad') || lowerMessage.includes('low')) return 'Sad';
-        if (lowerMessage.includes('okay') || lowerMessage.includes('fine') || lowerMessage.includes('meh')) return 'Neutral';
-        if (lowerMessage.includes('worried') || lowerMessage.includes('nervous')) return 'Anxious';
-        break;
-      
-      case 'sleepHours':
-        if (lowerMessage.includes('very less') || lowerMessage.includes('not enough') || lowerMessage.includes('insufficient')) return '5';
-        if (lowerMessage.includes('little') || lowerMessage.includes('few')) return '3';
-        if (lowerMessage.includes('normal') || lowerMessage.includes('enough')) return '7';
-        break;
-      
-      case 'stressLevel':
-        if (lowerMessage.includes('very') || lowerMessage.includes('high') || lowerMessage.includes('overwhelmed')) return 'High';
-        if (lowerMessage.includes('somewhat') || lowerMessage.includes('manageable')) return 'Medium';
-        if (lowerMessage.includes('low') || lowerMessage.includes('not much')) return 'Low';
-        break;
-      
-      case 'socialSupport':
-        if (lowerMessage.includes('disconnected') || lowerMessage.includes('not open') || lowerMessage.includes('alone')) return 'Weak';
-        if (lowerMessage.includes('some') || lowerMessage.includes('family')) return 'Average';
-        if (lowerMessage.includes('great') || lowerMessage.includes('amazing')) return 'Strong';
-        break;
-      
-      case 'loneliness':
-        if (lowerMessage.includes('disconnected') || lowerMessage.includes('alone') || lowerMessage.includes('not connected')) return 'Often';
-        if (lowerMessage.includes('sometimes') || lowerMessage.includes('occasionally')) return 'Sometimes';
-        if (lowerMessage.includes('never') || lowerMessage.includes('rarely')) return 'Never';
-        break;
-      }
-    
-    return null; // No intelligent guess possible
-  }
+  // REMOVED: makeIntelligentGuess function - letting Gemini handle everything naturally
 
-  // Get the next parameter in sequence
-  private getNextParameter(currentParameter: string, parameterOrder: string[]): string | null {
-    const currentIndex = parameterOrder.indexOf(currentParameter);
-    if (currentIndex < parameterOrder.length - 1) {
-      return parameterOrder[currentIndex + 1];
-    }
-    return null;
-  }
-
-  // Get the appropriate question for each parameter
-  private getParameterQuestion(parameter: string): string {
-    const questions = {
-      mood: "How have you been feeling emotionally lately? Are you feeling sad, anxious, happy, neutral, or stressed?",
-      sleepHours: "How many hours of sleep do you usually get at night?",
-      stressLevel: "Would you say your stress level is low, medium, or high right now?",
-      academicPressure: "How about your schoolwork - does it feel manageable (low), somewhat challenging (medium), or overwhelming (high)?",
-      socialSupport: "Do you feel supported by your friends and family? Would you say it's weak, average, or strong?",
-      loneliness: "Do you find yourself feeling lonely often, sometimes, or hardly ever?",
-      confidenceLevel: "How would you describe your confidence level these days - low, medium, or high?",
-      hobbiesInterest: "What kinds of activities or hobbies do you enjoy in your free time? Do you like sports, music, reading, art, travel, or none of these?",
-      opennessToJournaling: "Would you be open to trying journaling as a way to express your thoughts? Yes or no?",
-      willingForProfessionalHelp: "If things felt overwhelming, would you consider talking to a counselor or professional? Yes or no?"
-    };
-    
-    return questions[parameter as keyof typeof questions] || "Can you tell me more about how you're feeling?";
-  }
+  // REMOVED: getNextParameter and getParameterQuestion functions - letting Gemini handle everything naturally
 
   // Sanitize extracted data to ensure STRICT SEQUENTIAL parameter extraction
   private sanitizeExtractedData(extractedData: any, currentWellnessData: any): Partial<WellnessData> {
@@ -827,14 +772,14 @@ CRITICAL: You are a compassionate friend who genuinely cares. Always extract dat
       const parameterOrder = ['mood', 'sleepHours', 'stressLevel', 'academicPressure', 'socialSupport', 'loneliness', 'confidenceLevel', 'hobbiesInterest', 'opennessToJournaling', 'willingForProfessionalHelp'];
       
       // Find the next parameter to collect
-      let nextParameter: string | null = null;
-      for (const param of parameterOrder) {
-        if (!currentWellnessData[param]) {
-          nextParameter = param;
-          break;
-        }
+    let nextParameter: string | null = null;
+    for (const param of parameterOrder) {
+      if (!currentWellnessData[param]) {
+        nextParameter = param;
+        break;
       }
-      
+    }
+    
       if (!nextParameter) {
         logger.info('✅ All parameters already collected - no extraction needed');
         return {};
@@ -895,60 +840,7 @@ CRITICAL: You are a compassionate friend who genuinely cares. Always extract dat
     return inputValue;
   }
 
-  // SIMPLIFIED: Only handle skip logic, no hardcoded overrides
-  private extractDataFromUserMessage(message: string, currentWellnessData: any, nextParameter: string): Partial<WellnessData> {
-    const extractedData: any = {};
-    const lowerMessage = message.toLowerCase();
-    
-    // ONLY handle skip logic - no hardcoded parameter extraction
-    // This prevents overriding Gemini's responses and future parameter prediction
-    
-    if (lowerMessage.includes('skip') || lowerMessage.includes('pass') || lowerMessage.includes('next') || lowerMessage.includes('move on')) {
-      // Assign reasonable default based on parameter
-      switch (nextParameter) {
-        case 'opennessToJournaling':
-          extractedData.opennessToJournaling = 'Yes'; // Default to open
-          break;
-        case 'willingForProfessionalHelp':
-          extractedData.willingForProfessionalHelp = 'Yes'; // Default to open
-          break;
-        case 'hobbiesInterest':
-          extractedData.hobbiesInterest = 'None'; // Default to none
-          break;
-        case 'confidenceLevel':
-          extractedData.confidenceLevel = 'Medium'; // Default to medium
-          break;
-        case 'loneliness':
-          extractedData.loneliness = 'Sometimes'; // Default to sometimes
-          break;
-        case 'socialSupport':
-          extractedData.socialSupport = 'Average'; // Default to average
-          break;
-        case 'academicPressure':
-          extractedData.academicPressure = 'Medium'; // Default to medium
-          break;
-        case 'stressLevel':
-          extractedData.stressLevel = 'Medium'; // Default to medium
-          break;
-        case 'sleepHours':
-          extractedData.sleepHours = '7'; // Default to 7 hours
-          break;
-        case 'mood':
-          extractedData.mood = 'Neutral'; // Default to neutral
-          break;
-      }
-      logger.info(`⏭️ User skipped ${nextParameter}, assigned default: ${extractedData[nextParameter]}`);
-    }
-    
-    logger.info('SKIP LOGIC ONLY - no hardcoded overrides:', { 
-      userMessage: message, 
-      nextParameter,
-      extractedData,
-      extractedCount: Object.keys(extractedData).length
-    });
-    
-    return extractedData;
-  }
+  // REMOVED: extractDataFromUserMessage function - letting Gemini handle everything naturally
 
   // Get comprehensive mapping for parameter with all scenarios
   private getComprehensiveMappingForParameter(parameter: string): string {

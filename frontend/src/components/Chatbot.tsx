@@ -346,7 +346,7 @@ const Chatbot: React.FC = () => {
       // Get empathetic response from Gemini (pass current wellness data)
       const geminiResult = await getGeminiResponse(inputMessage, newHistory, wellnessData);
       
-      // CRITICAL FIX: Ensure data consistency and proper state management
+      // CRITICAL FIX: Let Gemini control the entire conversation flow
       let finalWellnessData = wellnessData;
       
       if (geminiResult.extractedData && Object.keys(geminiResult.extractedData).length > 0) {
@@ -356,7 +356,7 @@ const Chatbot: React.FC = () => {
         // Update frontend state with the new data
         setWellnessData(finalWellnessData);
         
-        console.log('✅ Data extracted and state updated:', {
+        console.log('✅ Gemini data extracted and state updated:', {
           extractedData: geminiResult.extractedData,
           finalWellnessData: finalWellnessData,
           previousData: wellnessData
@@ -370,24 +370,11 @@ const Chatbot: React.FC = () => {
           }
         }
       } else {
-        console.log('⚠️ No data extracted from Gemini response');
+        console.log('⚠️ No data extracted from Gemini response - this should not happen with proper prompt');
         
-        // If no data extracted, try to extract from user message as fallback
-        const fallbackData = extractWellnessDataFromMessage(inputMessage, wellnessData);
-        if (Object.keys(fallbackData).length > 0) {
-          finalWellnessData = { ...wellnessData, ...fallbackData };
-          setWellnessData(finalWellnessData);
-          
-          console.log('✅ Frontend fallback data extraction successful:', fallbackData);
-          
-          // Store fallback data during the session
-          if (currentUser?.email) {
-            const storageSuccess = await storeEncryptedInsights(finalWellnessData);
-            if (!storageSuccess) {
-              console.warn('⚠️ Failed to store fallback data, but continuing with conversation');
-            }
-          }
-        }
+        // REMOVED: Frontend fallback extraction - let Gemini handle everything
+        // The fallback system was interrupting Gemini's natural conversation flow
+        console.log('🔄 Letting Gemini continue the conversation naturally without fallback interruption');
       }
       
       const botMessage: Message = {
@@ -505,60 +492,8 @@ const Chatbot: React.FC = () => {
     return fallbackData;
   };
 
-  // CRITICAL ADDITION: Frontend fallback data extraction for when Gemini fails
-  const extractWellnessDataFromMessage = (message: string, currentData: Partial<WellnessData>): Partial<WellnessData> => {
-    const extractedData: any = {};
-    const lowerMessage = message.toLowerCase();
-    
-    // Check for mood indicators
-    if (!currentData.mood) {
-      if (lowerMessage.includes('low') || lowerMessage.includes('sad') || lowerMessage.includes('down') || lowerMessage.includes('not good') || lowerMessage.includes('bad')) {
-        extractedData.mood = 'Sad';
-      } else if (lowerMessage.includes('happy') || lowerMessage.includes('good') || lowerMessage.includes('great')) {
-        extractedData.mood = 'Happy';
-      } else if (lowerMessage.includes('anxious') || lowerMessage.includes('worried') || lowerMessage.includes('nervous')) {
-        extractedData.mood = 'Anxious';
-      } else if (lowerMessage.includes('stressed') || lowerMessage.includes('overwhelmed')) {
-        extractedData.mood = 'Stressed';
-      } else if (lowerMessage.includes('neutral') || lowerMessage.includes('okay') || lowerMessage.includes('fine')) {
-        extractedData.mood = 'Neutral';
-      }
-    }
-    
-    // Check for sleep indicators
-    if (!currentData.sleepHours) {
-      if (lowerMessage.includes('very less') || lowerMessage.includes('very few') || lowerMessage.includes('very little') || lowerMessage.includes('hardly any') || lowerMessage.includes('not much')) {
-        extractedData.sleepHours = '4';
-      } else if (lowerMessage.includes('enough') || lowerMessage.includes('normal') || lowerMessage.includes('decent')) {
-        extractedData.sleepHours = '7';
-      } else if (lowerMessage.includes('a lot') || lowerMessage.includes('plenty') || lowerMessage.includes('more than enough')) {
-        extractedData.sleepHours = '9';
-      }
-      
-      // Extract specific hours if mentioned
-      const sleepMatch = lowerMessage.match(/(\d+)\s*(?:hours?|hrs?|h)/);
-      if (sleepMatch) {
-        const hours = parseInt(sleepMatch[1]);
-        if (hours >= 1 && hours <= 10) {
-          extractedData.sleepHours = hours.toString();
-        }
-      }
-    }
-    
-    // Check for stress indicators
-    if (!currentData.stressLevel) {
-      if (lowerMessage.includes('very stressed') || lowerMessage.includes('extremely stressed') || lowerMessage.includes('overwhelmed')) {
-        extractedData.stressLevel = 'High';
-      } else if (lowerMessage.includes('somewhat stressed') || lowerMessage.includes('a bit stressed') || lowerMessage.includes('moderate stress')) {
-        extractedData.stressLevel = 'Medium';
-      } else if (lowerMessage.includes('not stressed') || lowerMessage.includes('low stress') || lowerMessage.includes('relaxed')) {
-        extractedData.stressLevel = 'Low';
-      }
-    }
-    
-    console.log('Frontend fallback data extraction:', { message, extractedData });
-    return extractedData;
-  };
+  // REMOVED: Frontend fallback data extraction - letting Gemini handle everything naturally
+  // This was interrupting Gemini's conversation flow and causing the fallback question issue
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
