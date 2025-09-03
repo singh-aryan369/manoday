@@ -13,6 +13,11 @@
 
 - 🤖 **Google Gemini AI Integration** - Intelligent, empathetic conversations
 - 🎯 **Google Cloud AutoML** - Personalized activity recommendations
+- 🏥 **Professional Help Locator** - Find nearby Indian mental health centers with Google Maps
+- 📞 **Real Contact Information** - Actual phone numbers for local Indian helplines
+- 🇮🇳 **India-Specific Support** - 10 national Indian helplines + local center discovery
+- 🎤 **Voice-to-Text Journaling** - Speak your thoughts with Google Speech-to-Text
+- 📝 **Encrypted Journaling** - Secure personal space for thoughts and reflections
 - 🔐 **End-to-End Encryption** - User data privacy with AES-256-GCM
 - 📱 **Modern React Frontend** - Beautiful, responsive UI with Tailwind CSS
 - 🔥 **Firebase Backend** - Scalable cloud functions and database
@@ -32,13 +37,38 @@
 - **MVC Pattern** with clear separation of concerns
 - **Google Gemini AI Service** for intelligent conversations
 - **AutoML Service** for personalized recommendations
+- **Professional Help Service** for location-based Indian mental health centers
+- **Google Maps Integration** for real-time Indian helpline discovery with India-only filtering
+- **Speech-to-Text Service** for voice-to-text journaling
+- **Journal Service** for encrypted personal journaling
 - **Encryption Service** for data security
 - **Session Management** for chat tracking
 
 ### **Database (Firestore)**
 - **Encrypted User Data** with AES-256-GCM encryption
 - **Chat Session Tracking** with subcollections
+- **Encrypted Journal Entries** with user-specific encryption keys
 - **Real-time Updates** for seamless user experience
+
+## 🇮🇳 Indian Mental Health Support
+
+### **National Helplines (Available 24/7)**
+1. **KIRAN Mental Health Rehabilitation Helpline** - `1800-599-0019` (Government of India)
+2. **Vandrevala Foundation Helpline** - `1860-2662-345 / 1800-2333-330`
+3. **iCall Psychosocial Helpline** - `9152987821`
+4. **Sneha Suicide Prevention Centre** - `044-24640050 / 044-24640060`
+5. **AASRA Suicide Prevention Helpline** - `91-22-27546669 / 91-22-27546668`
+6. **National Commission for Women Helpline** - `181`
+7. **Childline India Foundation** - `1098`
+8. **National Mental Health Helpline (NIMHANS)** - `080-46110007`
+9. **Roshni Helpline** - `040-66202000 / 040-66202001`
+10. **Sumaitri Suicide Prevention Centre** - `011-23389090`
+
+### **Local Center Discovery**
+- **Google Maps Integration** finds real Indian mental health centers
+- **India-only filtering** ensures no international results
+- **Real phone numbers and addresses** for local support
+- **25km radius search** for nearby professional help
 
 ## 🚀 Quick Start
 
@@ -90,28 +120,6 @@ cd frontend && npm start
 
 ## 🔧 Configuration
 
-### **⚠️ IMPORTANT: Git-Safe Setup Required**
-
-This repository uses placeholder credentials for security. **Before running, you MUST configure:**
-
-1. **Backend Environment Variables**
-   ```bash
-   cd backend/functions
-   cp env.example .env
-   # Fill in: GEMINI_API_KEY, AUTOML_*, SERVICE_ACCOUNT_*, FIREBASE_PROJECT_ID
-   ```
-
-2. **Frontend Firebase Config**
-   ```bash
-   cd frontend
-   cp src/firebase/config.example.ts src/firebase/config.ts
-   # Fill in your Firebase project credentials
-   ```
-
-3. **Update Project ID in Multiple Files**
-   - `.firebaserc` - Replace `YOUR_FIREBASE_PROJECT_ID_HERE`
-   - `frontend/src/components/Chatbot.tsx` - Replace `YOUR_PROJECT_ID` in API URLs (lines 102, 143, 197, 271)
-
 ### **Required API Keys & Credentials**
 
 #### **1. Google Gemini API**
@@ -130,6 +138,53 @@ This repository uses placeholder credentials for security. **Before running, you
 - **Auth Domain**: Your Firebase auth domain
 - **Storage Bucket**: Your Firebase storage bucket
 
+#### **4. Google Maps API**
+- **API Key**: Google Maps API key for Places API
+- **Enabled APIs**: Places API, Maps JavaScript API, Geocoding API
+- **Usage**: Location-based mental health center discovery
+
+#### **5. Google Speech-to-Text API**
+- **Service Account Key**: JSON key file with Speech-to-Text permissions
+- **File Location**: Must be placed in `backend/functions/service-account-key.json`
+- **Usage**: Voice-to-text journaling feature
+
+### **Service Account Key Setup**
+
+#### **Step 1: Download Service Account Key**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **IAM & Admin** → **Service Accounts**
+3. Find your Speech-to-Text service account
+4. Click **Actions** → **Manage Keys**
+5. Click **Add Key** → **Create New Key** → **JSON**
+6. Download the JSON file
+
+#### **Step 2: Place Key File in Backend**
+```bash
+# Navigate to backend functions directory
+cd backend/functions
+
+# Place your service account key file here
+# IMPORTANT: File must be named exactly 'service-account-key.json'
+cp /path/to/your/downloaded/key.json service-account-key.json
+```
+
+#### **Step 3: Verify File Location**
+Your backend directory should look like this:
+```
+backend/functions/
+├── src/
+├── lib/
+├── package.json
+├── service-account-key.json  ← Your key file goes here
+└── tsconfig.json
+```
+
+#### **Step 4: Update .gitignore (Security)**
+```bash
+# Add to .gitignore to prevent accidental commits
+echo "backend/functions/service-account-key.json" >> .gitignore
+```
+
 ### **Configuration Files**
 
 #### **Backend Configuration** (`backend/functions/src/config.ts`)
@@ -145,6 +200,11 @@ export const config = {
     endpoint: process.env.FIREBASE_CONFIG_AUTOML_ENDPOINT || 'YOUR_AUTOML_ENDPOINT',
     serviceAccountEmail: process.env.FIREBASE_CONFIG_AUTOML_SERVICE_ACCOUNT_EMAIL || 'YOUR_SERVICE_ACCOUNT_EMAIL',
     privateKey: process.env.FIREBASE_CONFIG_AUTOML_PRIVATE_KEY || 'YOUR_PRIVATE_KEY'
+  },
+  googleMaps: {
+    apiKey: process.env.GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY',
+    defaultRadius: 50000, // 50km in meters
+    maxResults: 20
   }
 };
 ```
@@ -153,11 +213,18 @@ export const config = {
 ```typescript
 const firebaseConfig = {
   apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "smart-surf-469908-n0.firebaseapp.com",
-projectId: "smart-surf-469908-n0",
-storageBucket: "smart-surf-469908-n0.appspot.com",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
   messagingSenderId: "YOUR_SENDER_ID",
   appId: "YOUR_APP_ID"
+};
+
+// Google Maps API Configuration for Professional Help
+export const googleMapsConfig = {
+  apiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY',
+  defaultRadius: 50000, // 50km in meters
+  maxResults: 20
 };
 ```
 
@@ -169,6 +236,9 @@ storageBucket: "smart-surf-469908-n0.appspot.com",
 |----------|----------|---------|---------|
 | **Gemini** | `/gemini` | AI-powered wellness conversations | POST |
 | **AutoML** | `/automl` | Personalized activity recommendations | POST |
+| **Professional Help** | `/professionalHelp` | Find nearby mental health centers | POST/GET |
+| **Speech-to-Text** | `/speechToText` | Voice-to-text transcription | POST/GET |
+| **Journal** | `/journal` | Encrypted journal CRUD operations | POST/GET |
 | **Store Insights** | `/storeEncryptedInsights` | Save encrypted wellness data | POST |
 | **Get Insights** | `/getEncryptedInsights` | Retrieve user wellness history | POST |
 | **Health Check** | `/health` | Service health monitoring | GET |
@@ -216,6 +286,77 @@ storageBucket: "smart-surf-469908-n0.appspot.com",
 }
 ```
 
+#### **Professional Help Search**
+```typescript
+// Request
+{
+  "latitude": 25.4273,
+  "longitude": 81.7709,
+  "radius": 50,
+  "limit": 20
+}
+
+// Response
+{
+  "centers": [
+    {
+      "id": "google-ChIJY6esiTC1mjkRC57TXDmwYaQ",
+      "name": "Dr Chhitij Srivastava (Psychiatrist)",
+      "address": "Prayagraj, Uttar Pradesh, India",
+      "phoneNumber": "094525 86864",
+      "website": "https://allahabadcdc.wixsite.com/allahabadcdc",
+      "distance": 9.7,
+      "specialties": ["Support Services", "Health Services"],
+      "is24Hours": false
+    }
+  ],
+  "totalFound": 20,
+  "searchRadius": 50
+}
+```
+
+#### **Speech-to-Text Transcription**
+```typescript
+// Request
+{
+  "audioData": "base64-encoded-audio-data",
+  "language": "en-US",
+  "sampleRate": 44100
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "transcript": "I'm feeling anxious about my upcoming exam",
+    "confidence": 0.95,
+    "language": "en-US"
+  }
+}
+```
+
+#### **Journal Entry**
+```typescript
+// Request
+{
+  "action": "create",
+  "title": "My thoughts today",
+  "content": "I'm feeling grateful for the support I received"
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "journalId": "journal_123456789",
+    "title": "My thoughts today",
+    "content": "I'm feeling grateful for the support I received",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
 ## 🚀 Deployment
 
 ### **Production Deployment**
@@ -247,9 +388,10 @@ firebase deploy --only hosting
 ```
 ✔  functions[gemini(us-central1)] Successful update operation.
 ✔  functions[automl(us-central1)] Successful update operation.
+✔  functions[professionalHelp(us-central1)] Successful update operation.
 ✔  functions[storeEncryptedInsights(us-central1)] Successful update operation.
 ✔  functions[getEncryptedInsights(us-central1)] Successful update operation.
-✔  hosting[smart-surf-469908-n0]: release complete
+✔  hosting[YOUR_PROJECT_ID]: release complete
 ```
 
 ## 🧪 Testing
@@ -267,16 +409,16 @@ npm start
 ```typescript
 // Update these lines in Chatbot.tsx:
 // Line 102: getEncryptedInsights
-const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/getEncryptedInsights`, {
+const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/getEncryptedInsights`, {
 
 // Line 143: storeEncryptedInsights  
-const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/storeEncryptedInsights`, {
+const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/storeEncryptedInsights`, {
 
 // Line 197: gemini
-const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/gemini`, {
+const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/gemini`, {
 
 // Line 271: automl
-const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/automl`, {
+const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/automl`, {
 ```
 
 ### **Testing Scenarios**
@@ -287,6 +429,12 @@ const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-cent
 - [ ] Wellness parameter extraction
 - [ ] Data encryption and storage
 - [ ] AutoML recommendations
+- [ ] Professional help locator
+- [ ] Location-based mental health center discovery
+- [ ] Real contact information display
+- [ ] Voice-to-text journaling
+- [ ] Encrypted journal CRUD operations
+- [ ] Speech-to-text transcription
 
 #### **Edge Cases**
 - [ ] Invalid user inputs
@@ -328,6 +476,20 @@ const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-cent
 - **Intelligent Extraction** - Context-aware parameter mapping
 - **Natural Conversations** - Flowing dialogue, not questionnaires
 - **Personalized Recommendations** - AutoML-based activity suggestions
+
+### **Professional Help Features**
+- **Location-Based Search** - Find mental health centers near user
+- **Real Contact Information** - Actual phone numbers and websites
+- **Google Maps Integration** - Powered by Google Places API
+- **24/7 Availability** - Crisis centers and emergency helplines
+- **Specialty Filtering** - Mental health, crisis intervention, therapy
+
+### **Journaling Features**
+- **Voice-to-Text Input** - Speak your thoughts using Google Speech-to-Text
+- **Encrypted Storage** - All journal entries encrypted with AES-256-GCM
+- **CRUD Operations** - Create, read, update, and delete journal entries
+- **User-Specific Encryption** - Each user's data encrypted with unique keys
+- **Real-time Transcription** - Live speech recognition in the journal interface
 
 ## 🔄 Development Workflow
 
@@ -419,8 +581,18 @@ manoday-Eeshan/
 │   └── functions/
 │       ├── src/                   # TypeScript source code
 │       │   ├── controllers/       # HTTP request handlers
-│       │   ├── services/          # Business logic (Gemini, AutoML, Encryption)
+│       │   │   ├── gemini.controller.ts
+│       │   │   ├── automl.controller.ts
+│       │   │   └── professional-help.controller.ts
+│       │   ├── services/          # Business logic
+│       │   │   ├── gemini.service.ts
+│       │   │   ├── automl.service.ts
+│       │   │   ├── professional-help.service.ts
+│       │   │   └── encryption.service.ts
 │       │   ├── types/             # TypeScript interfaces
+│       │   │   └── professional-help.types.ts
+│       │   ├── utils/             # Utility functions
+│       │   │   └── logger.ts
 │       │   └── config.ts          # API keys and configuration
 │       ├── lib/                   # Compiled JavaScript
 │       └── package.json           # Backend dependencies
@@ -429,6 +601,7 @@ manoday-Eeshan/
     │   ├── components/            # React components
     │   │   ├── Chatbot.tsx        # Main chat interface
     │   │   ├── LoginPage.tsx      # Authentication page
+    │   │   ├── ProfessionalHelpPage.tsx # Professional help locator
     │   │   ├── ProtectedRoute.tsx # Route protection
     │   │   └── ThemeToggle.tsx    # Theme switching
     │   ├── contexts/              # React contexts
@@ -437,7 +610,12 @@ manoday-Eeshan/
     │   ├── firebase/              # Firebase configuration
     │   │   └── config.ts          # Firebase project settings
     │   ├── services/              # API services
-    │   │   └── encryption.service.ts # Client-side encryption
+    │   │   ├── encryption.service.ts # Client-side encryption
+    │   │   └── ProfessionalHelpService.ts # Professional help API
+    │   ├── types/                 # TypeScript interfaces
+    │   │   └── ProfessionalHelpTypes.ts
+    │   ├── config/                # Configuration files
+    │   │   └── professionalHelpConfig.ts
     │   └── App.tsx                # Main application component
     ├── tsconfig.json              # TypeScript configuration
     └── package.json               # Frontend dependencies
@@ -511,7 +689,7 @@ firebase deploy --only hosting    # Frontend
 ```
 
 ### **Key URLs**
-- **Production**: `https://smart-surf-469908-n0.web.app`
+- **Production**: `https://YOUR_PROJECT_ID.web.app`
 - **Local Frontend**: `http://localhost:3000`
 - **Local Backend**: `http://localhost:5001`
 - **Emulator UI**: `http://localhost:4001`

@@ -67,7 +67,7 @@ export class FrontendEncryptionService {
 
       return {
         encryptedData: this.arrayBufferToHex(encryptedBuffer),
-        iv: this.arrayBufferToHex(iv)
+        iv: this.uint8ArrayToHex(iv)
       };
     } catch (error) {
       console.error('Frontend encryption error:', error);
@@ -108,6 +108,15 @@ export class FrontendEncryptionService {
    */
   private static arrayBufferToHex(buffer: ArrayBuffer): string {
     const uint8Array = new Uint8Array(buffer);
+    return Array.from(uint8Array)
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  /**
+   * Convert Uint8Array to hex string
+   */
+  private static uint8ArrayToHex(uint8Array: Uint8Array): string {
     return Array.from(uint8Array)
       .map(byte => byte.toString(16).padStart(2, '0'))
       .join('');

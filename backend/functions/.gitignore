@@ -1,46 +1,36 @@
-# Dependencies
-node_modules/
+# Compiled JavaScript files
+lib/**/*.js
+lib/**/*.js.map
+lib/**/*.d.ts
 
-# Build outputs
-lib/
-dist/
-*.tsbuildinfo
+# TypeScript v1 declaration files
+typings/
+
+# Node.js dependency directory
+node_modules/
+*.local
 
 # Environment files
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
-# Firebase
-.firebase/
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
+# Logs
 *.log
-
-# Service account keys
-service-account-key.json
-*.json.key
-google-credentials*.json
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
+firestore-debug.log
 
 # Test files
 test-*.js
 *.test.js
 *.spec.js
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo

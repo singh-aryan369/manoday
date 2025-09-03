@@ -8,36 +8,12 @@ This guide documents the complete setup process for the Manoday mental wellness 
 2. **Project ID Mismatch** - Backend and frontend using different Firebase projects
 3. **Build Failures** - Object.entries and process object not recognized
 4. **CORS Configuration** - Backend already properly configured
+5. **Professional Help Feature** - Added location-based Indian mental health center discovery
+6. **Google Maps Integration** - Real-time Indian helpline center search with contact information
+7. **India-Specific Support** - 10 national Indian helplines with India-only filtering
+8. **Voice-to-Text Journaling** - Google Speech-to-Text integration for voice journaling
 
 ## 🔧 Step-by-Step Setup
-
-### **Step 0: Git-Safe Configuration (IMPORTANT!)**
-The repository is now git-safe with placeholder credentials. Before running, you MUST:
-
-1. **Backend Configuration**
-   ```bash
-   cd backend/functions
-   cp env.example .env
-   # Edit .env with your actual credentials:
-   # - GEMINI_API_KEY
-   # - AUTOML_ENDPOINT, AUTOML_MODEL_ID, etc.
-   # - SERVICE_ACCOUNT_EMAIL, SERVICE_ACCOUNT_PRIVATE_KEY
-   # - FIREBASE_PROJECT_ID
-   ```
-
-2. **Frontend Configuration**
-   ```bash
-   cd frontend
-   cp src/firebase/config.example.ts src/firebase/config.ts
-   # Edit config.ts with your actual Firebase credentials
-   ```
-
-3. **Update Project ID in Multiple Places**
-   ```bash
-   # Update .firebaserc
-   # Update frontend/src/components/Chatbot.tsx (lines 102, 143, 197, 271)
-   # Replace YOUR_PROJECT_ID with your actual Firebase project ID
-   ```
 
 ### **Step 1: Install Dependencies**
 
@@ -116,14 +92,14 @@ firebase emulators:start --only functions,firestore,ui
 
 **Why Root Directory Matters:**
 - `.firebaserc` file is in root directory
-- Contains correct project ID: `smart-surf-469908-n0`
+- Contains correct project ID: `YOUR_PROJECT_ID`
 - Ensures backend and frontend use same project
 
 #### **❌ Don't Use This (Wrong Project ID):**
 ```bash
 cd backend/functions
 npm run serve
-# This uses my-first-project-9e0be instead of smart-surf-469908-n0
+# This uses my-first-project-9e0be instead of YOUR_PROJECT_ID
 ```
 
 ### **Step 5: Start Frontend**
@@ -142,11 +118,32 @@ npm start
 | **Emulator UI** | `http://localhost:4001` | ✅ Firebase Console |
 | **Firestore** | `http://localhost:8081` | ✅ Database |
 
+## 🇮🇳 Indian Mental Health Support
+
+### **National Helplines (Available 24/7)**
+1. **KIRAN Mental Health Rehabilitation Helpline** - `1800-599-0019` (Government of India)
+2. **Vandrevala Foundation Helpline** - `1860-2662-345 / 1800-2333-330`
+3. **iCall Psychosocial Helpline** - `9152987821`
+4. **Sneha Suicide Prevention Centre** - `044-24640050 / 044-24640060`
+5. **AASRA Suicide Prevention Helpline** - `91-22-27546669 / 91-22-27546668`
+6. **National Commission for Women Helpline** - `181`
+7. **Childline India Foundation** - `1098`
+8. **National Mental Health Helpline (NIMHANS)** - `080-46110007`
+9. **Roshni Helpline** - `040-66202000 / 040-66202001`
+10. **Sumaitri Suicide Prevention Centre** - `011-23389090`
+
+### **Local Center Discovery Features**
+- **Google Maps Integration** finds real Indian mental health centers
+- **India-only filtering** ensures no international results
+- **Real phone numbers and addresses** for local support
+- **25km radius search** for nearby professional help
+- **Fallback to national helplines** when no local centers found
+
 ## 🔍 Verification Steps
 
 ### **1. Check Backend Health**
 ```bash
-curl http://localhost:5001/smart-surf-469908-n0/us-central1/health
+curl http://localhost:5001/YOUR_PROJECT_ID/us-central1/health
 ```
 
 **Expected Response:**
@@ -165,11 +162,11 @@ curl http://localhost:5001/smart-surf-469908-n0/us-central1/health
 ### **2. Verify Project ID in Emulator Logs**
 Look for this in your terminal:
 ```
-✔  functions[us-central1-gemini]: http function initialized (http://127.0.0.1:5001/smart-surf-469908-n0/us-central1/gemini).
-✔  functions[us-central1-automl]: http function initialized (http://127.0.0.1:5001/smart-surf-469908-n0/us-central1/automl).
+✔  functions[us-central1-gemini]: http function initialized (http://127.0.0.1:5001/YOUR_PROJECT_ID/us-central1/gemini).
+✔  functions[us-central1-automl]: http function initialized (http://127.0.0.1:5001/YOUR_PROJECT_ID/us-central1/automl).
 ```
 
-**✅ Correct:** `smart-surf-469908-n0`
+**✅ Correct:** `YOUR_PROJECT_ID`
 **❌ Wrong:** `my-first-project-9e0be`
 
 ### **3. Test Frontend Build**
@@ -233,7 +230,7 @@ manoday-Eeshan/
 ```json
 {
   "projects": {
-    "default": "smart-surf-469908-n0"
+    "default": "YOUR_PROJECT_ID"
   }
 }
 ```
@@ -242,8 +239,8 @@ manoday-Eeshan/
 ```typescript
 const firebaseConfig = {
   apiKey: "Abcsdhwendnfmfjiei4893930230",
-  authDomain: "smart-surf-469908-n0.firebaseapp.com",
-projectId: "smart-surf-469908-n0",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+projectId: "YOUR_PROJECT_ID",
   // ... other config
 };
 ```
@@ -255,6 +252,11 @@ export const config = {
     apiKey: process.env.FIREBASE_CONFIG_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY_HERE',
     endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent',
     // ... other config
+  },
+  googleMaps: {
+    apiKey: process.env.GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY',
+    defaultRadius: 50000, // 50km in meters
+    maxResults: 20
   }
 };
 ```
@@ -268,6 +270,9 @@ export const config = {
 - ✅ Google login works properly
 - ✅ Gemini AI responses are received
 - ✅ AutoML recommendations work
+- ✅ Professional help locator finds nearby centers
+- ✅ Google Maps API returns real contact information
+- ✅ Location-based search works correctly
 
 ## 🚀 Quick Start Commands
 
@@ -299,6 +304,7 @@ firebase deploy --only functions
 ```
 ✔  functions[gemini(us-central1)] Successful update operation.
 ✔  functions[automl(us-central1)] Successful update operation.
+✔  functions[professionalHelp(us-central1)] Successful update operation.
 ✔  functions[storeEncryptedInsights(us-central1)] Successful update operation.
 ✔  functions[getEncryptedInsights(us-central1)] Successful update operation.
 ```
@@ -318,17 +324,18 @@ firebase deploy --only hosting
 
 **Expected Output:**
 ```
-✔  hosting[smart-surf-469908-n0]: release complete
-Hosting URL: https://smart-surf-469908-n0.web.app
+✔  hosting[YOUR_PROJECT_ID]: release complete
+Hosting URL: https://YOUR_PROJECT_ID.web.app
 ```
 
 ### **Step 3: Verify Production URLs**
 
 | Service | Production URL |
 |---------|----------------|
-| **Frontend** | `https://smart-surf-469908-n0.web.app` |
+| **Frontend** | `https://YOUR_PROJECT_ID.web.app` |
 | **Gemini Function** | `https://gemini-tipjtjdkwq-uc.a.run.app` |
 | **AutoML Function** | `https://automl-tipjtjdkwq-uc.a.run.app` |
+| **Professional Help** | `https://professionalhelp-tipjtjdkwq-uc.a.run.app` |
 | **Store Insights** | `https://storeencryptedinsights-tipjtjdkwq-uc.a.run.app` |
 | **Get Insights** | `https://getencryptedinsights-tipjtjdkwq-uc.a.run.app` |
 
@@ -362,27 +369,27 @@ npm start
 // In frontend/src/components/Chatbot.tsx, change ALL API calls:
 
 // 1. Line 197: Gemini API call
-const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/gemini`, {
+const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/gemini`, {
   // instead of:
-  // https://us-central1-smart-surf-469908-n0.cloudfunctions.net/gemini
+  // https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/gemini
 });
 
 // 2. Line 271: AutoML API call  
-const recommendation = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/automl`, {
+const recommendation = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/automl`, {
   // instead of:
-  // https://us-central1-smart-surf-469908-n0.cloudfunctions.net/automl
+  // https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/automl
 });
 
 // 3. Line 143: Store Encrypted Insights
-const storeResponse = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/storeEncryptedInsights`, {
+const storeResponse = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/storeEncryptedInsights`, {
   // instead of:
-  // https://us-central1-smart-surf-469908-n0.cloudfunctions.net/storeEncryptedInsights
+  // https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/storeEncryptedInsights
 });
 
 // 4. Line 102: Get Encrypted Insights
-const getResponse = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/getEncryptedInsights`, {
+const getResponse = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/getEncryptedInsights`, {
   // instead of:
-  // https://us-central1-smart-surf-469908-n0.cloudfunctions.net/getEncryptedInsights
+  // https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/getEncryptedInsights
 });
 ```
 
@@ -435,13 +442,13 @@ Before deploying, ensure:
 - [ ] **Frontend builds successfully** (`npm run build`)
 - [ ] **All TypeScript errors resolved**
 - [ ] **Environment variables configured**
-- [ ] **Firebase project selected** (`smart-surf-469908-n0`)
+- [ ] **Firebase project selected** (`YOUR_PROJECT_ID`)
 - [ ] **API keys valid** (Gemini, Firebase)
 
 ## 🔍 Post-Deployment Testing
 
 ### **1. Test Production Frontend**
-- Visit: `https://smart-surf-469908-n0.web.app`
+- Visit: `https://YOUR_PROJECT_ID.web.app`
 - Verify all features work
 - Check browser console for errors
 
@@ -469,6 +476,9 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
 - [ ] Parameter extraction
 - [ ] Data storage in Firestore
 - [ ] AutoML recommendations
+- [ ] Professional help locator
+- [ ] Location-based mental health center search
+- [ ] Real contact information display
 
 ### **Edge Cases**
 - [ ] Invalid user inputs
@@ -487,16 +497,18 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
 
 - **Node Version:** Project requires Node 22, but works with Node 23
 - **Firebase CLI:** Must be installed globally (`npm install -g firebase-tools`)
-- **Project ID:** Always use `smart-surf-469908-n0` (not `my-first-project-9e0be`)
+- **Project ID:** Always use `YOUR_PROJECT_ID` (not `my-first-project-9e0be`)
 - **CORS:** Already configured in backend - no additional setup needed
 - **Environment Variables:** Using fallback values from config.ts files
+- **Google Maps API:** Required for professional help feature - enable Places API, Maps JavaScript API, Geocoding API
+- **Professional Help:** New feature with location-based mental health center discovery
 
 ## 🔄 Sharing & Collaboration
 
 ### **What Happens When Someone Downloads Your Code:**
 
 **✅ Your App Stays Unchanged:**
-- Your deployed app (`smart-surf-469908-n0.web.app`) remains exactly the same
+- Your deployed app (`YOUR_PROJECT_ID.web.app`) remains exactly the same
 - Your Firebase project, database, and functions are completely untouched
 - Your users and data remain secure and isolated
 
@@ -514,7 +526,7 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
    ```typescript
    // frontend/src/firebase/config.ts
    const firebaseConfig = {
-     projectId: 'THEIR_PROJECT_ID', // Not smart-surf-469908-n0
+     projectId: 'THEIR_PROJECT_ID', // Not YOUR_PROJECT_ID
      // ... other config
    };
    
@@ -523,6 +535,10 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
      gemini: {
        apiKey: 'THEIR_GEMINI_API_KEY', // Not your key
        // ... other config
+     },
+     googleMaps: {
+       apiKey: 'THEIR_GOOGLE_MAPS_API_KEY', // Not your key
+       // ... other config
      }
    };
    ```
@@ -530,22 +546,22 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
 4. **Update API URLs in Chatbot.tsx:**
    ```typescript
    // Change ALL fetch URLs from production to local emulators:
-   // From: https://us-central1-smart-surf-469908-n0.cloudfunctions.net/
-// To: http://localhost:5001/smart-surf-469908-n0/us-central1/
+   // From: https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/
+// To: http://localhost:5001/YOUR_PROJECT_ID/us-central1/
    
    // This affects 4 API calls with EXACT line numbers:
    
    // Line 102: getEncryptedInsights
-   const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/getEncryptedInsights`, {
+   const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/getEncryptedInsights`, {
    
    // Line 143: storeEncryptedInsights  
-   const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/storeEncryptedInsights`, {
+   const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/storeEncryptedInsights`, {
    
    // Line 197: gemini
-   const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/gemini`, {
+   const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/gemini`, {
    
    // Line 271: automl
-   const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/automl`, {
+   const response = await fetch(`http://localhost:5001/YOUR_PROJECT_ID/us-central1/automl`, {
    ```
 4. **Deploy to Their Project:**
    ```bash
@@ -563,7 +579,7 @@ curl -X POST https://gemini-tipjtjdkwq-uc.a.run.app \
 
 ### **Result: Two Completely Separate Apps**
 ```
-Your App: smart-surf-469908-n0.web.app
+Your App: YOUR_PROJECT_ID.web.app
 ├── Your Firebase project
 ├── Your database & users
 ├── Your functions & API keys
@@ -580,4 +596,85 @@ Their App: their-project.web.app
 
 ---
 
-**🎯 Result:** A fully functional mental wellness app with Gemini AI integration, running locally without CORS issues or TypeScript errors.
+**🎯 Result:** A fully functional mental wellness app with Gemini AI integration and professional help locator, running locally without CORS issues or TypeScript errors.
+
+## 🏥 Professional Help Feature
+
+### **What It Does:**
+- **Location-Based Search**: Finds mental health centers near user's location
+- **Real Contact Information**: Displays actual phone numbers and websites
+- **Google Maps Integration**: Powered by Google Places API
+- **24/7 Availability**: Shows crisis centers and emergency helplines
+- **Specialty Filtering**: Mental health, crisis intervention, therapy
+
+### **How It Works:**
+1. User clicks "Try Professional Help" button in chat
+2. App requests location permission
+3. Backend calls Google Places API to find nearby centers
+4. Real contact information is fetched and displayed
+5. User can call or visit website directly
+
+### **Required Setup:**
+- **Google Maps API Key**: Enable Places API, Maps JavaScript API, Geocoding API
+- **Location Permission**: Browser geolocation access
+- **CORS Configuration**: Already handled in backend
+
+## 🎤 Speech-to-Text Feature
+
+### **What It Does:**
+- **Voice-to-Text Journaling**: Speak your thoughts and convert to text
+- **Google Speech-to-Text API**: Powered by Google Cloud Speech-to-Text
+- **Real-time Transcription**: Live speech recognition in the journal
+- **Encrypted Storage**: Voice transcripts stored securely with journal entries
+
+### **Required Setup:**
+- **Google Speech-to-Text Service Account**: JSON key file with Speech-to-Text permissions
+- **Service Account Key File**: Must be placed in backend functions directory
+
+### **Service Account Key Setup:**
+
+#### **Step 1: Download Service Account Key**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **IAM & Admin** → **Service Accounts**
+3. Find your Speech-to-Text service account
+4. Click **Actions** → **Manage Keys**
+5. Click **Add Key** → **Create New Key** → **JSON**
+6. Download the JSON file
+
+#### **Step 2: Place Key File in Backend**
+```bash
+# Navigate to backend functions directory
+cd backend/functions
+
+# Place your service account key file here
+# IMPORTANT: File must be named exactly 'service-account-key.json'
+cp /path/to/your/downloaded/key.json service-account-key.json
+```
+
+#### **Step 3: Verify File Location**
+Your backend directory should look like this:
+```
+backend/functions/
+├── src/
+├── lib/
+├── package.json
+├── service-account-key.json  ← Your key file goes here
+└── tsconfig.json
+```
+
+#### **Step 4: Update .gitignore (Security)**
+```bash
+# Add to .gitignore to prevent accidental commits
+echo "backend/functions/service-account-key.json" >> .gitignore
+```
+
+### **API Endpoints:**
+- **Speech-to-Text**: `POST /speechToText?action=transcribe`
+- **Supported Languages**: `GET /speechToText?action=languages`
+- **Health Check**: `GET /speechToText?action=health`
+
+### **Professional Help API Endpoints:**
+- **Nearby Search**: `POST /professionalHelp?action=nearby`
+- **City Search**: `POST /professionalHelp?action=city`
+- **National Helplines**: `GET /professionalHelp?action=national`
+- **Health Check**: `GET /professionalHelp?action=health`

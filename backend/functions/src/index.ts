@@ -2,6 +2,9 @@ import { onRequest } from 'firebase-functions/v2/https';
 import * as logger from "firebase-functions/logger";
 import { GeminiController } from './controllers/gemini.controller';
 import { AutoMLController } from './controllers/automl.controller';
+import { ProfessionalHelpController } from './controllers/professional-help.controller';
+import { JournalController } from './controllers/journal.controller';
+import { SpeechToTextController } from './controllers/speech-to-text.controller';
 import { validateConfig } from './config';
 import { getFirestore } from 'firebase-admin/firestore';
 import { EncryptionService } from './services/encryption.service';
@@ -11,7 +14,7 @@ import * as admin from 'firebase-admin';
 if (!admin.apps.length) {
   admin.initializeApp({
     // Use production Firebase instead of emulator
-    projectId: process.env.FIREBASE_PROJECT_ID || 'YOUR_FIREBASE_PROJECT_ID_HERE',
+    projectId: process.env.FIREBASE_PROJECT_ID || 'YOUR_PROJECT_ID',
     // Remove emulator settings
   });
 }
@@ -22,6 +25,9 @@ if (!admin.apps.length) {
 // Initialize controllers
 const geminiController = new GeminiController();
 const automlController = new AutoMLController();
+const professionalHelpController = new ProfessionalHelpController();
+const journalController = new JournalController();
+const speechToTextController = new SpeechToTextController();
 
 // Validate configuration on startup
 validateConfig();
@@ -74,6 +80,102 @@ export const automl = onRequest(async (request, response) => {
   await automlController.handleRequest(request, response);
 });
 
+// Professional Help endpoints
+export const professionalHelp = onRequest(async (request, response) => {
+  // Enable CORS
+  response.set('Access-Control-Allow-Origin', '*');
+  response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  response.set('Access-Control-Max-Age', '86400');
+
+  if (request.method === 'OPTIONS') {
+    response.status(200).send('');
+    return;
+  }
+
+  const { action } = request.query;
+
+  try {
+    switch (action) {
+      case 'nearby':
+        await professionalHelpController.getNearbyHelplines(request, response);
+        break;
+      case 'city':
+        await professionalHelpController.getHelplinesByCity(request, response);
+        break;
+      case 'national':
+        await professionalHelpController.getNationalHelplines(request, response);
+        break;
+      case 'health':
+        await professionalHelpController.healthCheck(request, response);
+        break;
+      default:
+        response.status(400).json({
+          error: 'Invalid action. Supported actions: nearby, city, national, health'
+        });
+    }
+  } catch (error) {
+    logger.error('Error in professional help endpoint:', error);
+    response.status(500).json({
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Journal endpoints
+export const journal = onRequest(async (request, response) => {
+  // Enable CORS
+  response.set('Access-Control-Allow-Origin', '*');
+  response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id');
+  response.set('Access-Control-Max-Age', '86400');
+
+  if (request.method === 'OPTIONS') {
+    response.status(200).send('');
+    return;
+  }
+
+  logger.info('Journal endpoint called');
+  await journalController.handleRequest(request, response);
+});
+
+// Speech-to-Text endpoints
+export const speechToText = onRequest(async (request, response) => {
+  // Enable CORS
+  response.set('Access-Control-Allow-Origin', '*');
+  response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id');
+  response.set('Access-Control-Max-Age', '86400');
+
+  if (request.method === 'OPTIONS') {
+    response.status(200).send('');
+    return;
+  }
+
+  logger.info('Speech-to-Text endpoint called');
+  
+  try {
+    if (request.method === 'POST') {
+      await speechToTextController.transcribeAudio(request, response);
+    } else if (request.method === 'GET' && request.query.action === 'languages') {
+      await speechToTextController.getSupportedLanguages(request, response);
+    } else if (request.method === 'GET' && request.query.action === 'health') {
+      await speechToTextController.healthCheck(request, response);
+    } else {
+      response.status(405).json({
+        success: false,
+        error: 'Method not allowed'
+      });
+    }
+  } catch (error) {
+    logger.error('Error in speech-to-text endpoint', error);
+    response.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 // Health check endpoint
 export const health = onRequest((request, response) => {
   logger.info('Health check endpoint called');
@@ -83,7 +185,10 @@ export const health = onRequest((request, response) => {
     services: {
       auth: 'configured',
       gemini: 'configured',
-      automl: 'configured'
+      automl: 'configured',
+      professionalHelp: 'configured',
+      journal: 'configured',
+      speechToText: 'configured'
     }
   });
 });

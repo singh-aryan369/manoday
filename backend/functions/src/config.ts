@@ -1,5 +1,6 @@
 // Configuration file for API endpoints and credentials
 export const config = {
+
   // Vertex AI Gemini Configuration - Uses Firebase config with fallbacks
   gemini: {
     apiKey: process.env.FIREBASE_CONFIG_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY_HERE',
@@ -11,17 +12,17 @@ export const config = {
   
   // AutoML Model Configuration - Uses environment variables for security
   automl: {
-    endpoint: process.env.AUTOML_ENDPOINT || 'YOUR_AUTOML_ENDPOINT_HERE',
+    endpoint: process.env.AUTOML_ENDPOINT || 'YOUR_AUTOML_ENDPOINT_URL_HERE',
     modelId: process.env.AUTOML_MODEL_ID || 'YOUR_AUTOML_MODEL_ID_HERE',
-    projectId: process.env.PROJECT_ID || 'YOUR_AUTOML_PROJECT_ID_HERE',
-    region: process.env.REGION || 'YOUR_AUTOML_REGION_HERE'
+    projectId: process.env.PROJECT_ID || 'YOUR_GOOGLE_CLOUD_PROJECT_ID_HERE',
+    region: process.env.REGION || 'YOUR_MODEL_REGION_HERE'
   },
   
   // Service Account Configuration - Uses environment variables for security
   serviceAccount: {
     email: process.env.SERVICE_ACCOUNT_EMAIL || 'YOUR_SERVICE_ACCOUNT_EMAIL_HERE',
-    projectId: process.env.PROJECT_ID || 'YOUR_SERVICE_ACCOUNT_PROJECT_ID_HERE',
-    region: process.env.REGION || 'YOUR_SERVICE_ACCOUNT_REGION_HERE',
+    projectId: process.env.PROJECT_ID || 'YOUR_GOOGLE_CLOUD_PROJECT_ID_HERE',
+    region: process.env.REGION || 'YOUR_MODEL_REGION_HERE',
     privateKey: process.env.SERVICE_ACCOUNT_PRIVATE_KEY || 'YOUR_SERVICE_ACCOUNT_PRIVATE_KEY_HERE'
   },
   
@@ -47,7 +48,14 @@ export const config = {
     'Hobbies Wanderlust',
     'Meditation and Yoga',
     'Personalized Goal Tracker'
-  ]
+  ],
+
+  // Google Maps Configuration for Professional Help
+  googleMaps: {
+    apiKey: process.env.GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY_HERE',
+    defaultRadius: 50000, // 50km in meters
+    maxResults: 20
+  }
 };
 
 // Environment variable validation

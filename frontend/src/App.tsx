@@ -5,6 +5,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import Chatbot from './components/Chatbot';
+import ProfessionalHelpPage from './components/ProfessionalHelpPage';
+import JournalPage from './components/JournalPage';
 
 function App() {
   return (
@@ -19,6 +21,22 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Chatbot />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/professionalHelp" 
+                element={
+                  <ProtectedRoute>
+                    <ProfessionalHelpPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/journal" 
+                element={
+                  <ProtectedRoute>
+                    <JournalPage />
                   </ProtectedRoute>
                 } 
               />

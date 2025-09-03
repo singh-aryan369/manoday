@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { FrontendEncryptionService } from '../services/encryption.service';
@@ -11,7 +12,8 @@ import {
   ChatBubbleLeftRightIcon,
   ShieldCheckIcon,
   ArrowRightIcon,
-  XMarkIcon
+  XMarkIcon,
+  BookOpenIcon
 } from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
 
@@ -43,6 +45,7 @@ interface WellnessData {
 }
 
 const Chatbot: React.FC = () => {
+  const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
   const { isDark } = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -430,6 +433,10 @@ const Chatbot: React.FC = () => {
               
               const recommendation = await getAutoMLRecommendation(dataForAutoML);
               
+              console.log('🎯 Generated recommendation:', recommendation);
+              console.log('🎯 Recommendation text:', recommendation.recommendation);
+              console.log('🎯 Is Professional Help?', recommendation.recommendation === 'Professional Help');
+              
               const recommendationMessage: Message = {
                 id: Date.now() + 2,
                 text: hasAllParams 
@@ -559,6 +566,32 @@ const Chatbot: React.FC = () => {
               <span className="text-sm font-medium">Insights</span>
             </button>
 
+            {/* Journal Button */}
+            <button
+              onClick={() => navigate('/journal')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-colors duration-200 ${
+                isDark 
+                  ? 'bg-green-900/50 text-green-300 hover:bg-green-800/50' 
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              <BookOpenIcon className="h-4 w-4" />
+              <span className="text-sm font-medium">Journal</span>
+            </button>
+
+            {/* Professional Help Button */}
+            <button
+              onClick={() => navigate('/professionalHelp')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-colors duration-200 ${
+                isDark 
+                  ? 'bg-orange-900/50 text-orange-300 hover:bg-orange-800/50' 
+                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+              }`}
+            >
+              <HeartIcon className="h-4 w-4" />
+              <span className="text-sm font-medium">Professional Help</span>
+            </button>
+
             {/* User Info */}
             <div className="flex items-center space-x-3">
               <div className="text-right">
@@ -661,8 +694,19 @@ const Chatbot: React.FC = () => {
                               <button 
                                 className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-xs font-semibold rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 transform hover:scale-[1.02]"
                                 onClick={() => {
-                                  // TODO: Navigate to new route when implemented
-                                  console.log(`Navigate to activity: ${message.metadata?.recommendation}`);
+                                  const recommendation = message.metadata?.recommendation;
+                                  console.log('🔍 Button clicked! Recommendation:', recommendation);
+                                  
+                                  if (recommendation === 'Professional Help') {
+                                    console.log('✅ Navigating to professional help page...');
+                                    navigate('/professionalHelp');
+                                  } else if (recommendation === 'Journaling' || recommendation === 'Journal') {
+                                    console.log('✅ Navigating to journaling page...');
+                                    navigate('/journal');
+                                  } else {
+                                    // TODO: Navigate to other activity routes when implemented
+                                    console.log(`Navigate to activity: ${recommendation}`);
+                                  }
                                 }}
                               >
                                 Try {message.metadata?.recommendation}
