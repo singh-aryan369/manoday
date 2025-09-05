@@ -16,52 +16,95 @@ export class JournalService {
 
   /**
    * Create a new journal entry
+   * For end-to-end encryption: only store encrypted data, never decrypt
    */
   async createJournal(request: CreateJournalRequest): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      logger.info('Creating new journal entry', { userId: request.userId, title: request.title });
+      logger.info('Creating new journal entry', { userId: request.userId });
 
       const journalId = this.db.collection(this.collectionName).doc().id;
       const now = new Date();
 
-      // Encrypt the journal data
-      const journalData = {
-        title: request.title,
-        content: request.content
-      };
+      // Check if this is client-side encrypted data (new format) or server-side encrypted (old format)
+      if (request.encryptedData && request.iv && request.salt) {
+        // New format: Client-side encrypted with password + Gmail
+        // Store encrypted data directly - server never sees decrypted content
+        const journalEntry: JournalEntry = {
+          id: journalId,
+          title: 'Encrypted Journal Entry', // Placeholder
+          content: 'Encrypted content', // Placeholder
+          createdAt: now,
+          updatedAt: now,
+          userId: request.userId,
+          isEncrypted: true,
+          // Store client-side encrypted data
+          encryptedData: request.encryptedData,
+          iv: request.iv,
+          salt: request.salt
+        };
 
-      const { encryptedData, iv } = EncryptionService.encryptWellnessData(journalData, request.userId);
+        // Store in user's subcollection
+        await this.db
+          .collection(this.collectionName)
+          .doc(request.userId)
+          .collection('entries')
+          .doc(journalId)
+          .set(journalEntry);
 
-      const journalEntry: JournalEntry = {
-        id: journalId,
-        title: '', // Will be encrypted
-        content: '', // Will be encrypted
-        createdAt: now,
-        updatedAt: now,
-        userId: request.userId,
-        isEncrypted: true,
-        // Store encrypted data separately
-        encryptedData,
-        iv
-      };
+        logger.info('Client-side encrypted journal entry created successfully', { journalId, userId: request.userId });
 
-      // Store in user's subcollection
-      await this.db
-        .collection(this.collectionName)
-        .doc(request.userId)
-        .collection('entries')
-        .doc(journalId)
-        .set(journalEntry);
+        return {
+          success: true,
+          data: {
+            journalId,
+            message: 'Journal entry created and encrypted successfully!'
+          }
+        };
+      } else if (request.title && request.content) {
+        // Old format: Server-side encrypted (for backward compatibility)
+        const journalData = {
+          title: request.title,
+          content: request.content
+        };
 
-      logger.info('Journal entry created successfully', { journalId, userId: request.userId });
+        const { encryptedData, iv } = EncryptionService.encryptWellnessData(journalData, request.userId);
 
-      return {
-        success: true,
-        data: {
-          journalId,
-          message: 'Journal entry created successfully'
-        }
-      };
+        const journalEntry: JournalEntry = {
+          id: journalId,
+          title: '', // Will be encrypted
+          content: '', // Will be encrypted
+          createdAt: now,
+          updatedAt: now,
+          userId: request.userId,
+          isEncrypted: true,
+          // Store server-side encrypted data
+          encryptedData,
+          iv
+        };
+
+        // Store in user's subcollection
+        await this.db
+          .collection(this.collectionName)
+          .doc(request.userId)
+          .collection('entries')
+          .doc(journalId)
+          .set(journalEntry);
+
+        logger.info('Server-side encrypted journal entry created successfully', { journalId, userId: request.userId });
+
+        return {
+          success: true,
+          data: {
+            journalId,
+            message: 'Journal entry created successfully'
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Invalid journal data format'
+        };
+      }
     } catch (error) {
       logger.error('Error creating journal entry', error);
       return {
@@ -73,6 +116,7 @@ export class JournalService {
 
   /**
    * Read a specific journal entry
+   * Returns encrypted data only - never decrypts on server side
    */
   async readJournal(request: ReadJournalRequest): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
@@ -102,27 +146,8 @@ export class JournalService {
         };
       }
 
-      // Decrypt the journal data if it's encrypted
-      if (journalData.isEncrypted && journalData.encryptedData && journalData.iv) {
-        try {
-          const decryptedData = EncryptionService.decryptWellnessData(
-            journalData.encryptedData,
-            journalData.iv,
-            request.userId
-          );
-
-          // Update the journal data with decrypted content
-          journalData.title = decryptedData.title;
-          journalData.content = decryptedData.content;
-        } catch (decryptError) {
-          logger.error('Error decrypting journal entry', decryptError);
-          return {
-            success: false,
-            error: 'Failed to decrypt journal entry'
-          };
-        }
-      }
-
+      // Return encrypted data only - server never decrypts
+      // Client-side will handle decryption based on format (salt field indicates client-side encrypted)
       logger.info('Journal entry read successfully', { journalId: request.journalId });
 
       return {
@@ -170,11 +195,43 @@ export class JournalService {
         };
       }
 
-      // Get current decrypted data
+      // For client-side encrypted journals, we can't decrypt on server
+      // The frontend should handle decryption and send the updated encrypted data
+      if (existingData.isEncrypted && existingData.salt) {
+        // This is a client-side encrypted journal - store the new encrypted data directly
+        logger.info('Updating client-side encrypted journal entry', { journalId: request.journalId });
+        
+        // For client-side encrypted journals, we store the new encrypted data directly
+        // The frontend sends us the re-encrypted data
+        const updateData: any = {
+          title: request.title,
+          content: request.content,
+          updatedAt: new Date(),
+          isEncrypted: true,
+          encryptedData: request.encryptedData,
+          iv: request.iv,
+          salt: request.salt
+        };
+
+        await journalRef.update(updateData);
+
+        logger.info('Client-side encrypted journal entry updated successfully', { journalId: request.journalId });
+        return {
+          success: true,
+          data: {
+            id: request.journalId,
+            title: request.title,
+            content: request.content,
+            updatedAt: updateData.updatedAt
+          }
+        };
+      }
+
+      // Get current decrypted data for server-side encrypted journals (old format)
       let currentTitle = existingData.title;
       let currentContent = existingData.content;
 
-      if (existingData.isEncrypted && existingData.encryptedData && existingData.iv) {
+      if (existingData.isEncrypted && existingData.encryptedData && existingData.iv && !existingData.salt) {
         try {
           const decryptedData = EncryptionService.decryptWellnessData(
             existingData.encryptedData,
@@ -192,37 +249,65 @@ export class JournalService {
         }
       }
 
-      // Prepare updated data
-      const updatedTitle = request.title !== undefined ? request.title : currentTitle;
-      const updatedContent = request.content !== undefined ? request.content : currentContent;
+      // Check if this is client-side encrypted data (new format) or server-side encrypted (old format)
+      if (request.encryptedData && request.iv && request.salt) {
+        // New format: Client-side encrypted with password + Gmail
+        // Store encrypted data directly - server never sees decrypted content
+        const updateData: Partial<JournalEntry> = {
+          updatedAt: new Date(),
+          title: 'Encrypted Journal Entry', // Placeholder
+          content: 'Encrypted content', // Placeholder
+          isEncrypted: true,
+          // Store client-side encrypted data
+          encryptedData: request.encryptedData,
+          iv: request.iv,
+          salt: request.salt
+        };
 
-      // Encrypt the updated data
-      const journalData = {
-        title: updatedTitle,
-        content: updatedContent
-      };
+        await journalRef.update(updateData);
 
-      const { encryptedData, iv } = EncryptionService.encryptWellnessData(journalData, request.userId);
+        logger.info('Client-side encrypted journal entry updated successfully', { journalId: request.journalId });
 
-      const updateData: Partial<JournalEntry> = {
-        updatedAt: new Date(),
-        title: '', // Will be encrypted
-        content: '', // Will be encrypted
-        encryptedData,
-        iv
-      };
+        return {
+          success: true,
+          data: {
+            journalId: request.journalId,
+            message: 'Journal entry updated and encrypted successfully!'
+          }
+        };
+      } else {
+        // Old format: Server-side encrypted (for backward compatibility)
+        const updatedTitle = request.title !== undefined ? request.title : currentTitle;
+        const updatedContent = request.content !== undefined ? request.content : currentContent;
 
-      await journalRef.update(updateData);
+        // Encrypt the updated data
+        const journalData = {
+          title: updatedTitle,
+          content: updatedContent
+        };
 
-      logger.info('Journal entry updated successfully', { journalId: request.journalId });
+        const { encryptedData, iv } = EncryptionService.encryptWellnessData(journalData, request.userId);
 
-      return {
-        success: true,
-        data: {
-          journalId: request.journalId,
-          message: 'Journal entry updated successfully'
-        }
-      };
+        const updateData: Partial<JournalEntry> = {
+          updatedAt: new Date(),
+          title: '', // Will be encrypted
+          content: '', // Will be encrypted
+          encryptedData,
+          iv
+        };
+
+        await journalRef.update(updateData);
+
+        logger.info('Server-side encrypted journal entry updated successfully', { journalId: request.journalId });
+
+        return {
+          success: true,
+          data: {
+            journalId: request.journalId,
+            message: 'Journal entry updated successfully'
+          }
+        };
+      }
     } catch (error) {
       logger.error('Error updating journal entry', error);
       return {
@@ -313,26 +398,8 @@ export class JournalService {
       snapshot.forEach((doc: any) => {
         const data = doc.data() as JournalEntry;
         
-        // Decrypt the journal data if it's encrypted
-        if (data.isEncrypted && data.encryptedData && data.iv) {
-          try {
-            const decryptedData = EncryptionService.decryptWellnessData(
-              data.encryptedData,
-              data.iv,
-              request.userId
-            );
-            
-            // Update the journal data with decrypted content
-            data.title = decryptedData.title;
-            data.content = decryptedData.content;
-          } catch (decryptError) {
-            logger.error('Error decrypting journal entry in list', decryptError);
-            // Keep encrypted data if decryption fails
-            data.title = '[Encrypted]';
-            data.content = '[Encrypted]';
-          }
-        }
-        
+        // Never decrypt on server side - return encrypted data only
+        // Client-side will handle decryption based on format
         journals.push(data);
       });
 

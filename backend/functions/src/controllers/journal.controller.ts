@@ -73,28 +73,48 @@ export class JournalController {
    */
   private async createJournal(req: Request, res: Response, userId: string): Promise<void> {
     try {
-      const { title, content } = req.body;
+      const { title, content, encryptedData, iv, salt } = req.body;
 
-      if (!title || !content) {
+      // Check if this is encrypted data (new format) or plain text (old format)
+      if (encryptedData && iv && salt) {
+        // New encrypted format - store encrypted data directly
+        const request: CreateJournalRequest = {
+          title: 'Encrypted Journal Entry', // Placeholder title
+          content: 'Encrypted content', // Placeholder content
+          userId,
+          encryptedData,
+          iv,
+          salt
+        };
+
+        const result = await this.journalService.createJournal(request);
+
+        if (result.success) {
+          res.status(201).json(result);
+        } else {
+          res.status(400).json(result);
+        }
+      } else if (title && content) {
+        // Old plain text format - encrypt on server side
+        const request: CreateJournalRequest = {
+          title,
+          content,
+          userId
+        };
+
+        const result = await this.journalService.createJournal(request);
+
+        if (result.success) {
+          res.status(201).json(result);
+        } else {
+          res.status(400).json(result);
+        }
+      } else {
         res.status(400).json({
           success: false,
-          error: 'Title and content are required'
+          error: 'Either encrypted data (encryptedData, iv, salt) or plain text (title, content) is required'
         });
         return;
-      }
-
-      const request: CreateJournalRequest = {
-        title,
-        content,
-        userId
-      };
-
-      const result = await this.journalService.createJournal(request);
-
-      if (result.success) {
-        res.status(201).json(result);
-      } else {
-        res.status(400).json(result);
       }
     } catch (error) {
       logger.error('Error in createJournal', error);
@@ -128,7 +148,19 @@ export class JournalController {
       const result = await this.journalService.readJournal(request);
 
       if (result.success) {
-        res.status(200).json(result);
+        // Always return encrypted data for client-side decryption
+        // Server never sees decrypted content
+        res.status(200).json({
+          success: true,
+          data: {
+            id: result.data?.id,
+            encryptedData: result.data?.encryptedData,
+            iv: result.data?.iv,
+            salt: result.data?.salt,
+            createdAt: result.data?.createdAt,
+            updatedAt: result.data?.updatedAt
+          }
+        });
       } else {
         res.status(404).json(result);
       }
@@ -146,7 +178,7 @@ export class JournalController {
    */
   private async updateJournal(req: Request, res: Response, userId: string): Promise<void> {
     try {
-      const { journalId, title, content } = req.body;
+      const { journalId, title, content, encryptedData, iv, salt } = req.body;
 
       if (!journalId) {
         res.status(400).json({
@@ -156,27 +188,48 @@ export class JournalController {
         return;
       }
 
-      if (!title && !content) {
+      // Check if this is encrypted data (new format) or plain text (old format)
+      if (encryptedData && iv && salt) {
+        // New encrypted format - store encrypted data directly
+        const request: UpdateJournalRequest = {
+          journalId,
+          title: 'Encrypted Journal Entry', // Placeholder title
+          content: 'Encrypted content', // Placeholder content
+          userId,
+          encryptedData,
+          iv,
+          salt
+        };
+
+        const result = await this.journalService.updateJournal(request);
+
+        if (result.success) {
+          res.status(200).json(result);
+        } else {
+          res.status(400).json(result);
+        }
+      } else if (title && content) {
+        // Old plain text format - encrypt on server side
+        const request: UpdateJournalRequest = {
+          journalId,
+          title,
+          content,
+          userId
+        };
+
+        const result = await this.journalService.updateJournal(request);
+
+        if (result.success) {
+          res.status(200).json(result);
+        } else {
+          res.status(400).json(result);
+        }
+      } else {
         res.status(400).json({
           success: false,
-          error: 'At least one field (title or content) is required for update'
+          error: 'Either encrypted data (encryptedData, iv, salt) or plain text (title, content) is required'
         });
         return;
-      }
-
-      const request: UpdateJournalRequest = {
-        journalId,
-        title,
-        content,
-        userId
-      };
-
-      const result = await this.journalService.updateJournal(request);
-
-      if (result.success) {
-        res.status(200).json(result);
-      } else {
-        res.status(400).json(result);
       }
     } catch (error) {
       logger.error('Error in updateJournal', error);

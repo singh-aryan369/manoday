@@ -2,12 +2,13 @@ export interface JournalEntry {
   id: string;
   title: string;
   content: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | { _seconds: number; _nanoseconds: number };
+  updatedAt: Date | { _seconds: number; _nanoseconds: number };
   userId: string;
   isEncrypted: boolean;
   encryptedData?: string;
   iv?: string;
+  salt?: string;
 }
 
 export interface JournalRequest {
@@ -29,6 +30,9 @@ export interface CreateJournalRequest {
   title: string;
   content: string;
   userId: string;
+  encryptedData?: string;
+  iv?: string;
+  salt?: string;
 }
 
 export interface UpdateJournalRequest {
@@ -36,6 +40,9 @@ export interface UpdateJournalRequest {
   title?: string;
   content?: string;
   userId: string;
+  encryptedData?: string;
+  iv?: string;
+  salt?: string;
 }
 
 export interface DeleteJournalRequest {

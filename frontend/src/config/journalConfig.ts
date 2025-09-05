@@ -1,6 +1,6 @@
 export const journalConfig = {
   api: {
-    baseUrl: process.env.REACT_APP_JOURNAL_API_URL || 'https://journal-tipjtjdkwq-uc.a.run.app'
+    baseUrl: process.env.REACT_APP_JOURNAL_API_URL || 'http://localhost:5001/smart-surf-469908-n0/us-central1/journal'
   },
   ui: {
     maxTitleLength: 100,

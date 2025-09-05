@@ -5,13 +5,13 @@ import { getAnalytics } from 'firebase/analytics';
 
 // Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY_HERE",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE",
-  appId: "YOUR_APP_ID_HERE",
-  measurementId: "YOUR_MEASUREMENT_ID_HERE"
+  apiKey: "AIzaSyDX0jcHEdUypuSrVLHyJLUK64YX3j71UwE",
+  authDomain: "smart-surf-469908-n0.firebaseapp.com",
+  projectId: "smart-surf-469908-n0",
+  storageBucket: "smart-surf-469908-n0.appspot.com",
+  messagingSenderId: "118966222674",
+  appId: "1:118966222674:web:a03df61cf313141d07448b",
+  measurementId: "G-DQEVEJ9G3D"
 };
 
 // Initialize Firebase

@@ -5,6 +5,8 @@ import { JournalService } from '../services/JournalService';
 import { JournalEntry } from '../types/JournalTypes';
 import { journalConfig } from '../config/journalConfig';
 import VoiceRecorder from './VoiceRecorder';
+import { PasswordInput } from './PasswordInput';
+import { SecurePasswordStorage } from '../services/SecurePasswordStorage';
 
 const JournalPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -18,14 +20,36 @@ const JournalPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [userPassword, setUserPassword] = useState<string | null>(null);
+  const [showPasswordInput, setShowPasswordInput] = useState(false);
+  const [passwordAction, setPasswordAction] = useState<'create' | 'read' | 'update' | null>(null);
+  const [decryptedJournal, setDecryptedJournal] = useState<{ title: string; content: string } | null>(null);
 
   const journalService = new JournalService();
 
   useEffect(() => {
     if (currentUser?.email) {
       loadJournals();
+      
+      // Check if we have a stored password for this user
+      const storedPassword = SecurePasswordStorage.getPassword(currentUser.email);
+      if (storedPassword) {
+        setUserPassword(storedPassword);
+        console.log('🔒 Loaded stored password for user');
+      }
     }
   }, [currentUser?.email]);
+
+  // Extend session on user activity
+  useEffect(() => {
+    if (currentUser?.email && userPassword) {
+      const interval = setInterval(() => {
+        SecurePasswordStorage.extendSession(currentUser.email!);
+      }, 5 * 60 * 1000); // Extend every 5 minutes
+
+      return () => clearInterval(interval);
+    }
+  }, [currentUser?.email, userPassword]);
 
   useEffect(() => {
     if (selectedJournal) {
@@ -69,36 +93,43 @@ const JournalPage: React.FC = () => {
       return;
     }
 
+    if (!userPassword) {
+      setPasswordAction('create');
+      setShowPasswordInput(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      console.log('📝 Creating journal entry:', {
+      console.log('🔐 Creating encrypted journal entry:', {
         title: title.trim(),
         content: content.trim(),
         userId: currentUser.email
       });
 
-      const response = await journalService.createJournal({
-        title: title.trim(),
-        content: content.trim(),
-        userId: currentUser.email
-      });
+      const response = await journalService.createJournalEncrypted(
+        title.trim(),
+        content.trim(),
+        currentUser.email,
+        userPassword
+      );
 
-      console.log('📝 Journal creation response:', response);
+      console.log('🔐 Encrypted journal creation response:', response);
 
       if (response.success) {
-        setSuccess('Journal entry created successfully!');
+        setSuccess('Journal entry created and encrypted successfully!');
         setTitle('');
         setContent('');
         setIsCreating(false);
         loadJournals();
       } else {
-        setError(response.error || 'Failed to create journal entry');
+        setError(response.error || 'Failed to create encrypted journal entry');
       }
     } catch (err) {
-      console.error('📝 Journal creation error:', err);
-      setError('Failed to create journal entry');
+      console.error('🔐 Encrypted journal creation error:', err);
+      setError('Failed to create encrypted journal entry');
     } finally {
       setLoading(false);
     }
@@ -110,29 +141,36 @@ const JournalPage: React.FC = () => {
       return;
     }
 
+    if (!userPassword) {
+      setPasswordAction('update');
+      setShowPasswordInput(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const response = await journalService.updateJournal({
-        journalId: selectedJournal.id,
-        title: title.trim(),
-        content: content.trim(),
-        userId: currentUser.email
-      });
+      const response = await journalService.updateJournalEncrypted(
+        selectedJournal.id,
+        title.trim(),
+        content.trim(),
+        currentUser.email,
+        userPassword
+      );
 
       if (response.success) {
-        setSuccess('Journal entry updated successfully!');
+        setSuccess('Journal entry updated and encrypted successfully!');
         setTitle('');
         setContent('');
         setSelectedJournal(null);
         setIsEditing(false);
         loadJournals();
       } else {
-        setError(response.error || 'Failed to update journal entry');
+        setError(response.error || 'Failed to update encrypted journal entry');
       }
     } catch (err) {
-      setError('Failed to update journal entry');
+      setError('Failed to update encrypted journal entry');
     } finally {
       setLoading(false);
     }
@@ -173,12 +211,99 @@ const JournalPage: React.FC = () => {
     }
   };
 
-  const handleEditJournal = (journal: JournalEntry) => {
+  const handleEditJournal = async (journal: JournalEntry) => {
+    if (!userPassword) {
+      setPasswordAction('read');
+      setShowPasswordInput(true);
+      return;
+    }
+    
     setSelectedJournal(journal);
-    setTitle(journal.title);
-    setContent(journal.content);
+    
+    // Always decrypt the journal for editing
+    try {
+      console.log('🔐 Decrypting journal for editing...');
+      const result = await journalService.readJournalEncrypted(
+        journal.id,
+        currentUser?.email || '',
+        userPassword
+      );
+
+      if (result.success && result.data) {
+        console.log('🔐 Journal decrypted successfully for editing');
+        setTitle(result.data.title);
+        setContent(result.data.content);
+        setDecryptedJournal(result.data);
+      } else {
+        console.error('🔐 Failed to decrypt journal for editing:', result.error);
+        setError('Failed to decrypt journal entry - wrong password?');
+        return;
+      }
+    } catch (error) {
+      console.error('🔐 Error decrypting journal for editing:', error);
+      setError('Failed to decrypt journal entry');
+      return;
+    }
+    
     setIsEditing(true);
     setIsCreating(false);
+  };
+
+  const handlePasswordSubmit = (password: string) => {
+    if (!currentUser?.email) return;
+    
+    // Store password securely
+    SecurePasswordStorage.storePassword(currentUser.email, password);
+    setUserPassword(password);
+    setShowPasswordInput(false);
+    
+    // Continue with the action that was waiting for password
+    if (passwordAction === 'create') {
+      handleCreateJournal();
+    } else if (passwordAction === 'update') {
+      handleUpdateJournal();
+    } else if (passwordAction === 'read') {
+      // Password is now set, user can read journals
+      setPasswordAction(null);
+    }
+  };
+
+  const handlePasswordCancel = () => {
+    setShowPasswordInput(false);
+    setPasswordAction(null);
+  };
+
+  /**
+   * Decrypt journal data when a journal is selected
+   */
+  const decryptJournalData = async (journal: JournalEntry) => {
+    if (!currentUser?.email || !userPassword) {
+      console.log('🔐 Cannot decrypt: missing user email or password');
+      return;
+    }
+
+    try {
+      console.log('🔐 Decrypting journal data for display...');
+      
+      const result = await journalService.readJournalEncrypted(
+        journal.id,
+        currentUser.email,
+        userPassword
+      );
+
+      if (result.success && result.data) {
+        console.log('🔐 Journal decrypted successfully for display');
+        setDecryptedJournal(result.data);
+      } else {
+        console.error('🔐 Failed to decrypt journal:', result.error);
+        setError('Failed to decrypt journal entry - wrong password?');
+        setDecryptedJournal(null);
+      }
+    } catch (error) {
+      console.error('🔐 Error decrypting journal:', error);
+      setError('Failed to decrypt journal entry');
+      setDecryptedJournal(null);
+    }
   };
 
   const handleNewJournal = () => {
@@ -197,7 +322,17 @@ const JournalPage: React.FC = () => {
     setIsEditing(false);
     setError(null);
     setSuccess(null);
+    setDecryptedJournal(null);
   };
+
+  // Clear passwords when user changes (actual logout)
+  useEffect(() => {
+    return () => {
+      // Only clear password if user is actually logging out
+      // Don't clear on page refresh - let the 30-minute timeout handle it
+      console.log('🔒 Component unmounting - password will remain in memory until timeout');
+    };
+  }, []);
 
   const formatDate = (date: any) => {
     let dateObj: Date;
@@ -234,15 +369,45 @@ const JournalPage: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Password Input Modal */}
+      {showPasswordInput && (
+        <PasswordInput
+          onPasswordSubmit={handlePasswordSubmit}
+          onCancel={handlePasswordCancel}
+          title={passwordAction === 'create' ? 'Create Journal Password' : 'Enter Journal Password'}
+          isNewPassword={passwordAction === 'create'}
+        />
+      )}
+
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className={`text-4xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            📖 My Journal
-          </h1>
-          <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-            Write down your thoughts, feelings, and experiences in your personal space.
-          </p>
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h1 className={`text-4xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                📖 My Journal
+              </h1>
+              <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                Write down your thoughts, feelings, and experiences in your personal space.
+              </p>
+            </div>
+            <div className="text-right">
+              {userPassword ? (
+                <div className="flex items-center space-x-2 text-green-600">
+                  <span>🔒</span>
+                  <span className="text-sm font-medium">Encrypted</span>
+                  <span className="text-xs text-gray-500">
+                    (Auto-clear in 30min)
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 text-orange-600">
+                  <span>🔓</span>
+                  <span className="text-sm font-medium">Password Required</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Success/Error Messages */}
@@ -295,9 +460,17 @@ const JournalPage: React.FC = () => {
                         ? 'border-gray-700 hover:border-gray-600'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
-                    onClick={() => {
+                    onClick={async () => {
                       console.log('📖 Journal selected:', journal);
                       setSelectedJournal(journal);
+                      
+                      // Decrypt the journal data for display
+                      if (userPassword) {
+                        await decryptJournalData(journal);
+                      } else {
+                        // If no password, show encrypted data
+                        setDecryptedJournal(null);
+                      }
                     }}
                   >
                     <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -402,7 +575,7 @@ const JournalPage: React.FC = () => {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedJournal.title}
+                    {decryptedJournal?.title || selectedJournal.title}
                   </h2>
                   <div className="space-x-2">
                     <button
@@ -438,7 +611,20 @@ const JournalPage: React.FC = () => {
                 </div>
 
                 <div className={`prose max-w-none ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <div className="whitespace-pre-wrap">{selectedJournal.content}</div>
+                  {decryptedJournal ? (
+                    <div className="whitespace-pre-wrap">{decryptedJournal.content}</div>
+                  ) : userPassword ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                      <p>Decrypting journal content...</p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-6xl mb-4">🔒</div>
+                      <p className="text-orange-600 font-medium">Encrypted Content</p>
+                      <p className="text-sm mt-2">Enter your password to view this journal entry</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

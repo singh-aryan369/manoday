@@ -678,8 +678,8 @@ CRITICAL: You are a compassionate friend who genuinely cares. Always extract dat
   // Intelligent fallback that follows conversation flow and NEVER asks old questions
   private async getIntelligentFallback(message: string, conversationHistory: string[], wellnessData: any): Promise<string> {
     console.log('🔄 GENERATING INTELLIGENT FALLBACK RESPONSE');
-    console.log('📨 User message:', message);
-    console.log('📊 Current wellness data:', wellnessData);
+    // SECURITY: Don't log user messages to prevent data leakage
+    console.log('📊 Current wellness data keys:', Object.keys(wellnessData || {}));
     
     // Define the exact order of parameters to collect
     const parameterOrder = [

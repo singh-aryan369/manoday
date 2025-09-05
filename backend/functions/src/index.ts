@@ -14,7 +14,7 @@ import * as admin from 'firebase-admin';
 if (!admin.apps.length) {
   admin.initializeApp({
     // Use production Firebase instead of emulator
-    projectId: process.env.FIREBASE_PROJECT_ID || 'YOUR_PROJECT_ID',
+    projectId: process.env.FIREBASE_PROJECT_ID || 'smart-surf-469908-n0',
     // Remove emulator settings
   });
 }

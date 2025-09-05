@@ -26,5 +26,8 @@
   "workspaces": [
     "frontend",
     "backend/functions"
-  ]
+  ],
+  "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated"
+  }
 }
