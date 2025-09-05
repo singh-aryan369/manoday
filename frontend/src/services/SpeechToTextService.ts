@@ -162,7 +162,7 @@ export class SpeechToTextService {
     try {
       const base64Audio = await this.audioBlobToBase64(audioBlob);
       
-      const response = await fetch(`http://localhost:5001/smart-surf-469908-n0/us-central1/speechToText`, {
+      const response = await fetch(`https://us-central1-smart-surf-469908-n0.cloudfunctions.net/speechToText`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
