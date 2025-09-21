@@ -28,7 +28,7 @@ export class SpeechToTextService {
     this.speechClient = new SpeechClient({
       // Use service account key file
       keyFilename: './service-account-key.json',
-      projectId: process.env.FIREBASE_PROJECT_ID || 'smart-surf-469908-n0'
+      projectId: process.env.FIREBASE_PROJECT_ID || 'YOUR_PROJECT_ID_HERE'
     });
   }
 

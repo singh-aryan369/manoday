@@ -11,7 +11,7 @@ export class GeminiController {
 
   async handleRequest(req: any, res: any): Promise<void> {
     try {
-      const { message, conversationHistory, wellnessData } = req.body as GeminiRequest;
+      const { message, conversationHistory, wellnessData, language = 'en' } = req.body as GeminiRequest & { language?: string };
 
       if (!message) {
         res.status(400).json({ 
@@ -26,7 +26,8 @@ export class GeminiController {
       const result = await this.geminiService.generateResponse({
         message,
         conversationHistory,
-        wellnessData
+        wellnessData,
+        language
       });
       
       res.json({

@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import ProfessionalHelpService from '../services/ProfessionalHelpService';
 import { HelplineCenter, UserLocation } from '../types/ProfessionalHelpTypes';
+import LanguageSelector from './LanguageSelector';
 
 const ProfessionalHelpPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { isDark } = useTheme();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
@@ -98,10 +101,10 @@ const ProfessionalHelpPage: React.FC = () => {
             </svg>
           </div>
           <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-            Find Nearby Help
+            {t('find_nearby_help')}
           </h2>
           <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-            We need your location to find the nearest mental health helpline centers in your area.
+            {t('location_permission_message')}
           </p>
         </div>
 
@@ -117,10 +120,10 @@ const ProfessionalHelpPage: React.FC = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Getting Location...
+                {t('getting_location')}
               </>
             ) : (
-              'Allow Location Access'
+              t('allow_location_access')
             )}
           </button>
 
@@ -128,7 +131,7 @@ const ProfessionalHelpPage: React.FC = () => {
             onClick={handleBackToChat}
             className="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
           >
-            Back to Chat
+            {t('back_to_chat')}
           </button>
         </div>
 

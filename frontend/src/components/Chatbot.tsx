@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { FrontendEncryptionService } from '../services/encryption.service';
+import { HindiEnglishMappingService, getHindiChatGPTPrompt } from '../services/HindiEnglishMappingService';
 import { 
   PaperAirplaneIcon, 
   LightBulbIcon, 
@@ -16,6 +18,7 @@ import {
   BookOpenIcon
 } from '@heroicons/react/24/outline';
 import ThemeToggle from './ThemeToggle';
+import LanguageSelector from './LanguageSelector';
 
 // Define message structure
 interface Message {
@@ -48,6 +51,7 @@ const Chatbot: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
   const { isDark } = useTheme();
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -57,8 +61,17 @@ const Chatbot: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Session management for new chats
-  const [currentSessionId, setCurrentSessionId] = useState<string>(() => crypto.randomUUID());
+  const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const [isNewChatSession, setIsNewChatSession] = useState<boolean>(false);
+
+  // Initialize session ID only once per component mount (not on every render)
+  useEffect(() => {
+    if (!currentSessionId) {
+      const sessionId = crypto.randomUUID();
+      setCurrentSessionId(sessionId);
+      console.log('🔄 Session ID initialized on mount:', sessionId);
+    }
+  }, []);
   const [storedWellnessData, setStoredWellnessData] = useState<Partial<WellnessData>>({});
 
   // Auto-scroll to bottom
@@ -103,7 +116,7 @@ const Chatbot: React.FC = () => {
     if (!currentUser?.email) return;
     
     try {
-      const response = await fetch(`https://us-central1-smart-surf-469908-n0.cloudfunctions.net/getEncryptedInsights`, {
+      const response = await fetch(`https://getencryptedinsights-tipjtjdkwq-uc.a.run.app`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,7 +157,7 @@ const Chatbot: React.FC = () => {
       console.log('✅ Data encrypted successfully, sending to backend...');
 
       // Send encrypted data to backend with session ID
-      const response = await fetch(`https://us-central1-smart-surf-469908-n0.cloudfunctions.net/storeEncryptedInsights`, {
+      const response = await fetch(`https://storeencryptedinsights-tipjtjdkwq-uc.a.run.app`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,15 +211,54 @@ const Chatbot: React.FC = () => {
   // Call Vertex AI Gemini for empathetic response
   const getGeminiResponse = async (userMessage: string, history: string[], wellnessData: Partial<WellnessData>): Promise<{ response: string; extractedData: any; updatedWellnessData: any }> => {
     try {
-      const response = await fetch(`https://us-central1-smart-surf-469908-n0.cloudfunctions.net/gemini`, {
+      // Get current language and apply Hindi-English mapping if needed
+      const currentLanguage = localStorage.getItem('selectedLanguage') || 'en';
+      
+      // Map Hindi input to English for data processing
+      let processedMessage = userMessage;
+      let processedWellnessData = wellnessData;
+      
+      if (currentLanguage === 'hi') {
+        // Apply Hindi to English mapping for any wellness data values
+        if (wellnessData.mood) {
+          processedWellnessData.mood = HindiEnglishMappingService.mapToEnglish('mood', wellnessData.mood);
+        }
+        if (wellnessData.stressLevel) {
+          processedWellnessData.stressLevel = HindiEnglishMappingService.mapToEnglish('stress', wellnessData.stressLevel);
+        }
+        if (wellnessData.academicPressure) {
+          processedWellnessData.academicPressure = HindiEnglishMappingService.mapToEnglish('academic', wellnessData.academicPressure);
+        }
+        if (wellnessData.socialSupport) {
+          processedWellnessData.socialSupport = HindiEnglishMappingService.mapToEnglish('social', wellnessData.socialSupport);
+        }
+        if (wellnessData.loneliness) {
+          processedWellnessData.loneliness = HindiEnglishMappingService.mapToEnglish('loneliness', wellnessData.loneliness);
+        }
+        if (wellnessData.confidenceLevel) {
+          processedWellnessData.confidenceLevel = HindiEnglishMappingService.mapToEnglish('confidence', wellnessData.confidenceLevel);
+        }
+        if (wellnessData.hobbiesInterest) {
+          processedWellnessData.hobbiesInterest = HindiEnglishMappingService.mapToEnglish('hobbies', wellnessData.hobbiesInterest);
+        }
+        if (wellnessData.opennessToJournaling) {
+          processedWellnessData.opennessToJournaling = HindiEnglishMappingService.mapToEnglish('journaling', wellnessData.opennessToJournaling);
+        }
+        if (wellnessData.willingForProfessionalHelp) {
+          processedWellnessData.willingForProfessionalHelp = HindiEnglishMappingService.mapToEnglish('professional', wellnessData.willingForProfessionalHelp);
+        }
+      }
+      
+      const response = await fetch(`https://gemini-tipjtjdkwq-uc.a.run.app`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: userMessage,
+          message: processedMessage,
           conversationHistory: history,
-          wellnessData: wellnessData
+          wellnessData: processedWellnessData,
+          language: currentLanguage // Pass language to backend
         })
       });
       
@@ -272,7 +324,7 @@ const Chatbot: React.FC = () => {
   // Call AutoML model for activity recommendation
   const getAutoMLRecommendation = async (wellnessData: Partial<WellnessData>): Promise<{ recommendation: string; confidence: number }> => {
     try {
-      const response = await fetch(`https://us-central1-smart-surf-469908-n0.cloudfunctions.net/automl`, {
+      const response = await fetch(`https://automl-tipjtjdkwq-uc.a.run.app`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -347,6 +399,7 @@ const Chatbot: React.FC = () => {
 
     try {
       // Get empathetic response from Gemini (pass current wellness data)
+      // Use Hindi prompt if language is Hindi
       const geminiResult = await getGeminiResponse(inputMessage, newHistory, wellnessData);
       
       // CRITICAL FIX: Let Gemini control the entire conversation flow
@@ -532,7 +585,7 @@ const Chatbot: React.FC = () => {
               </h1>
               <p className={`text-sm font-medium transition-colors duration-300 ${
                 isDark ? 'text-gray-300' : 'text-gray-600'
-              }`}>Your mental wellness companion</p>
+              }`}>{t('your_mental_wellness_companion')}</p>
             </div>
           </div>
           
@@ -540,17 +593,33 @@ const Chatbot: React.FC = () => {
             {/* Theme Toggle */}
             <ThemeToggle />
 
+            {/* Language Selector */}
+            <LanguageSelector />
+
             {/* New Chat Button */}
             <button
               onClick={startNewChatSession}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-colors duration-200 ${
-                isDark 
-                  ? 'bg-blue-900/50 text-blue-300 hover:bg-blue-800/50' 
+                isDark
+                  ? 'bg-blue-900/50 text-blue-300 hover:bg-blue-800/50'
                   : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
               }`}
             >
               <ChatBubbleLeftRightIcon className="h-4 w-4" />
-              <span className="text-sm font-medium">New Chat</span>
+              <span className="text-sm font-medium">{t('new_chat')}</span>
+            </button>
+
+            {/* Dashboard Button */}
+            <button
+              onClick={() => navigate('/dashboard')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-colors duration-200 ${
+                isDark 
+                  ? 'bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/50' 
+                  : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+              }`}
+            >
+              <SparklesIcon className="h-4 w-4" />
+              <span className="text-sm font-medium">{t('dashboard')}</span>
             </button>
 
             {/* Wellness Data Toggle */}
@@ -563,7 +632,7 @@ const Chatbot: React.FC = () => {
               }`}
             >
               <SparklesIcon className="h-4 w-4" />
-              <span className="text-sm font-medium">Insights</span>
+              <span className="text-sm font-medium">{t('insights')}</span>
             </button>
 
             {/* Journal Button */}
@@ -576,7 +645,7 @@ const Chatbot: React.FC = () => {
               }`}
             >
               <BookOpenIcon className="h-4 w-4" />
-              <span className="text-sm font-medium">Journal</span>
+              <span className="text-sm font-medium">{t('journaling')}</span>
             </button>
 
             {/* Professional Help Button */}
@@ -589,7 +658,7 @@ const Chatbot: React.FC = () => {
               }`}
             >
               <HeartIcon className="h-4 w-4" />
-              <span className="text-sm font-medium">Professional Help</span>
+              <span className="text-sm font-medium">{t('professional_help')}</span>
             </button>
 
             {/* User Info */}
@@ -645,10 +714,10 @@ const Chatbot: React.FC = () => {
                   }`}>
                     <div className="flex items-center justify-center space-x-2">
                       <ChatBubbleLeftRightIcon className="h-4 w-4" />
-                      <span className="text-sm font-medium">🆕 New Chat Session Started</span>
+                      <span className="text-sm font-medium">{t('new_chat_session_started')}</span>
                     </div>
                     <p className="text-xs mt-1 opacity-80">
-                      Previous insights are displayed but not used for AI decisions
+                      {t('previous_insights_displayed')}
                     </p>
                   </div>
                 )}
@@ -798,7 +867,7 @@ const Chatbot: React.FC = () => {
                   isDark ? 'text-gray-200' : 'text-gray-800'
                 }`}>
                   <SparklesIcon className="h-5 w-5 mr-2 text-purple-600" />
-                  Wellness Insights
+                  {t('wellness_insights')}
                 </h3>
                 <button
                   onClick={() => setShowWellnessPanel(false)}
@@ -820,7 +889,9 @@ const Chatbot: React.FC = () => {
                       }`}>
                         🆕 Current Chat Data
                       </div>
-                      {Object.entries(wellnessData).map(([key, value]) => (
+                      {Object.entries(wellnessData)
+                        .filter(([key]) => !key.includes('journal') && !key.includes('Journal')) // Filter out journal-related data
+                        .map(([key, value]) => (
                         <div className={`p-4 rounded-xl border transition-colors duration-300 ${
                           isDark 
                             ? 'bg-gradient-to-r from-blue-900/50 to-indigo-900/50 border-blue-700/50' 
@@ -855,7 +926,9 @@ const Chatbot: React.FC = () => {
                       }`}>
                         💾 Stored Insights (Previous Sessions)
                       </div>
-                      {Object.entries(storedWellnessData).map(([key, value]) => (
+                      {Object.entries(storedWellnessData)
+                        .filter(([key]) => !key.includes('journal') && !key.includes('Journal')) // Filter out journal-related data
+                        .map(([key, value]) => (
                         <div className={`p-4 rounded-xl border transition-colors duration-300 ${
                           isDark 
                             ? 'bg-gradient-to-r from-purple-900/50 to-pink-900/50 border-purple-700/50' 

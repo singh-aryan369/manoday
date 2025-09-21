@@ -30,6 +30,29 @@ ui-debug.log
 **/key*.json
 **/service-account-key.json
 
+# Configuration files with sensitive data
+**/config.js
+**/config.js.map
+**/firebase-config.js
+**/firebase-config.js.map
+
+# Environment files
+.env
+.env.*
+!.env.example
+backend/functions/.env
+backend/functions/.env.*
+!backend/functions/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Firebase configuration files
+firebase.json
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

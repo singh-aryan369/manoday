@@ -2,7 +2,7 @@
 export const config = {
   // API Configuration
   api: {
-    baseUrl: process.env.REACT_APP_API_BASE_URL || 'https://us-central1-smart-surf-469908-n0.cloudfunctions.net'
+    baseUrl: process.env.REACT_APP_API_BASE_URL || 'https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net'
   },
 
   // Google Maps Configuration (handled by backend)

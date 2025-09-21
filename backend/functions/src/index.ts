@@ -6,7 +6,7 @@ import { ProfessionalHelpController } from './controllers/professional-help.cont
 import { JournalController } from './controllers/journal.controller';
 import { SpeechToTextController } from './controllers/speech-to-text.controller';
 import { validateConfig } from './config';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { EncryptionService } from './services/encryption.service';
 import * as admin from 'firebase-admin';
 
@@ -14,7 +14,7 @@ import * as admin from 'firebase-admin';
 if (!admin.apps.length) {
   admin.initializeApp({
     // Use production Firebase instead of emulator
-    projectId: process.env.FIREBASE_PROJECT_ID || 'smart-surf-469908-n0',
+    projectId: process.env.FIREBASE_PROJECT_ID || 'YOUR_PROJECT_ID_HERE',
     // Remove emulator settings
   });
 }
@@ -243,6 +243,169 @@ function prepareModelInput(features: any): any {
     WillingForProfessionalHelp: smartDefaults.willingForProfessionalHelp
   };
 }
+
+// Store encrypted journal insights 
+export const storeJournalInsights = onRequest(async (request, response) => {
+  response.set('Access-Control-Allow-Origin', '*');
+  response.set('Access-Control-Allow-Methods', 'GET, POST');
+  response.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (request.method === 'OPTIONS') {
+    response.status(200).send('');
+    return;
+  }
+
+  try {
+    const { userEmail, journalData } = request.body;
+    
+    console.log('🔐 STORING ENCRYPTED JOURNAL INSIGHTS:', {
+      userEmail,
+      journalData,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!userEmail || !journalData) {
+      console.log('❌ VALIDATION FAILED:', { userEmail: !!userEmail, journalData: !!journalData });
+      response.status(400).json({ success: false, error: 'Missing required fields' });
+      return;
+    }
+
+    // Encrypt the journal data
+    console.log('🔑 GENERATING ENCRYPTION KEY FOR JOURNAL DATA:', userEmail);
+    const { encryptedData, iv } = EncryptionService.encryptWellnessData(journalData, userEmail);
+    
+    console.log('✅ JOURNAL ENCRYPTION SUCCESSFUL:', {
+      userEmail,
+      encryptedDataLength: encryptedData.length,
+      ivLength: iv.length,
+      originalDataSize: JSON.stringify(journalData).length
+    });
+
+    // Store to Journal_insights collection
+    const db = getFirestore();
+    const today = new Date().toISOString().slice(0, 10);
+    const journalInsightRef = db.collection('Journal_insights').doc(userEmail).collection('daily').doc(today);
+    
+    const storageData = {
+      encryptedData,
+      iv,
+      userEmail,
+      date: today,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      dataType: 'journal_metrics',
+      // Store readable metrics for dashboard display
+      metrics: {
+        journal_streak: journalData.journal_streak || 0,
+        weekly_journal_count: journalData.weekly_journal_count || 0,
+        journal_entries_today: journalData.journal_entries_today || 0,
+        last_journal_date: journalData.last_journal_date || null
+      }
+    };
+
+    await journalInsightRef.set(storageData, { merge: true });
+    
+    console.log('✅ JOURNAL INSIGHTS STORED SUCCESSFULLY:', {
+      userEmail,
+      date: today,
+      collection: 'Journal_insights'
+    });
+
+    response.status(200).json({ 
+      success: true, 
+      message: 'Journal insights stored successfully',
+      date: today
+    });
+
+  } catch (error) {
+    console.error('❌ JOURNAL INSIGHTS STORAGE ERROR:', error);
+    response.status(500).json({ 
+      success: false, 
+      error: 'Failed to store journal insights' 
+    });
+  }
+});
+
+// Get encrypted journal insights
+export const getJournalInsights = onRequest(async (request, response) => {
+  response.set('Access-Control-Allow-Origin', '*');
+  response.set('Access-Control-Allow-Methods', 'GET, POST');
+  response.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (request.method === 'OPTIONS') {
+    response.status(200).send('');
+    return;
+  }
+
+  try {
+    const { userEmail } = request.body;
+    
+    if (!userEmail) {
+      response.status(400).json({ success: false, error: 'Missing userEmail' });
+      return;
+    }
+
+    console.log('🔍 RETRIEVING ENCRYPTED JOURNAL INSIGHTS:', { userEmail });
+
+    // Get today's journal insights
+    const db = getFirestore();
+    const today = new Date().toISOString().slice(0, 10);
+    const journalInsightRef = db.collection('Journal_insights').doc(userEmail).collection('daily').doc(today);
+    
+    const doc = await journalInsightRef.get();
+    
+    if (!doc.exists) {
+      console.log('📭 No journal insights found for today:', { userEmail, date: today });
+      response.status(200).json({ 
+        success: true, 
+        journalData: {
+          journal_streak: 0,
+          weekly_journal_count: 0,
+          last_journal_date: null,
+          journal_entries_today: 0
+        }
+      });
+      return;
+    }
+
+    const data = doc.data();
+    if (!data || !data.encryptedData || !data.iv) {
+      console.log('📭 Invalid journal insight data:', { userEmail, data });
+      response.status(200).json({ 
+        success: true, 
+        journalData: {
+          journal_streak: 0,
+          weekly_journal_count: 0,
+          last_journal_date: null,
+          journal_entries_today: 0
+        }
+      });
+      return;
+    }
+
+    // Decrypt the journal data
+    console.log('🔓 DECRYPTING JOURNAL INSIGHTS:', { userEmail });
+    const decryptedData = EncryptionService.decryptWellnessData(data.encryptedData, data.iv, userEmail);
+    
+    console.log('✅ JOURNAL INSIGHTS RETRIEVED AND DECRYPTED:', {
+      userEmail,
+      date: today,
+      journalData: decryptedData
+    });
+
+    response.status(200).json({ 
+      success: true, 
+      journalData: decryptedData
+    });
+
+  } catch (error) {
+    console.error('❌ JOURNAL INSIGHTS RETRIEVAL ERROR:', error);
+    response.status(500).json({ 
+      success: false, 
+      error: 'Failed to retrieve journal insights' 
+    });
+  }
+});
 
 // Store encrypted wellness insights with chat session tracking
 export const storeEncryptedInsights = onRequest(async (request, response) => {
@@ -476,17 +639,41 @@ export const getEncryptedInsights = onRequest(async (request, response) => {
     // Get chat history if requested
     let chatHistory: any[] = [];
     if (includeHistory) {
-      const chatSessionsSnapshot = await userRef.collection('chat_sessions').orderBy('timestamp', 'desc').get();
-      chatHistory = chatSessionsSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          sessionId: data.sessionId,
-          timestamp: data.timestamp,
-          parametersCollected: data.parametersCollected,
-          parameterCount: data.parameterCount,
-          // Don't decrypt historical data for privacy - just metadata
-        };
-      });
+      const chatSessionsSnapshot = await userRef.collection('chat_sessions').orderBy('timestamp', 'asc').get();
+      chatHistory = [];
+      for (const docSnap of chatSessionsSnapshot.docs) {
+        const data = docSnap.data();
+        if (data?.encryptedData && data?.iv) {
+          try {
+            // Decrypt each session using the same server-side method
+            const decrypted = EncryptionService.decryptWellnessData(
+              data.encryptedData,
+              data.iv,
+              userEmail
+            );
+            chatHistory.push({
+              sessionId: data.sessionId,
+              timestamp: data.timestamp,
+              wellnessData: decrypted,
+              parametersCollected: data.parametersCollected,
+              parameterCount: data.parameterCount,
+            });
+          } catch (e) {
+            chatHistory.push({
+              sessionId: data.sessionId,
+              timestamp: data.timestamp,
+              error: 'DECRYPT_FAILED'
+            });
+          }
+        } else {
+          chatHistory.push({
+            sessionId: data?.sessionId,
+            timestamp: data?.timestamp,
+            parametersCollected: data?.parametersCollected,
+            parameterCount: data?.parameterCount,
+          });
+        }
+      }
     }
 
     console.log('🎉 ENCRYPTED INSIGHTS RETRIEVED SUCCESSFULLY:', {

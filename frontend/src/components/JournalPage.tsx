@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { JournalService } from '../services/JournalService';
 import { JournalEntry } from '../types/JournalTypes';
 import { journalConfig } from '../config/journalConfig';
 import VoiceRecorder from './VoiceRecorder';
 import { PasswordInput } from './PasswordInput';
 import { SecurePasswordStorage } from '../services/SecurePasswordStorage';
+import { normalizeInputs, computeWRI, writeTodayWri, calculateJournalMetrics, storeJournalInsights, getReadableJournalMetrics } from '../services/MoodScoreService';
+import { useNavigate } from 'react-router-dom';
+import LanguageSelector from './LanguageSelector';
 
 const JournalPage: React.FC = () => {
   const { currentUser } = useAuth();
   const { isDark } = useTheme();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
   const [journals, setJournals] = useState<JournalEntry[]>([]);
   const [selectedJournal, setSelectedJournal] = useState<JournalEntry | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -119,11 +125,118 @@ const JournalPage: React.FC = () => {
       console.log('🔐 Encrypted journal creation response:', response);
 
       if (response.success) {
-        setSuccess('Journal entry created and encrypted successfully!');
+        setSuccess(t('journal_created_success'));
         setTitle('');
         setContent('');
         setIsCreating(false);
         loadJournals();
+
+        // Apply journaling bonus to WRI
+        try {
+          // Get current WRI from dashboard and apply journaling bonus
+          const response = await fetch(`https://getencryptedinsights-tipjtjdkwq-uc.a.run.app`, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ userEmail: currentUser.email, includeHistory: true })
+          });
+          const data = await response.json();
+          const wellness = data?.data?.wellnessData || {};
+          
+          // Wait a moment for Firestore to update, then calculate fresh journal metrics including the new entry
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+          const journalMetrics = await calculateJournalMetrics(currentUser.email);
+          console.log('📊 JOURNAL: Fresh metrics calculated after creation:', journalMetrics);
+          console.log('📊 JOURNAL: User info used:', {
+            email: currentUser.email,
+            uid: currentUser.uid,
+            displayName: currentUser.displayName
+          });
+          
+          // Update wellness data to reflect journaling activity with enhanced metrics
+          const updatedWellness = {
+            ...wellness,
+            journal_writing: 'yes', // Mark as journaling
+            journal_entries_today: journalMetrics.journal_entries_today, // Use calculated count
+            last_journal_date: journalMetrics.last_journal_date, // Track last journal date
+            journal_streak: journalMetrics.journal_streak, // Include streak data
+            weekly_journal_count: journalMetrics.weekly_journal_count // Include weekly count
+          };
+          
+          const currentInputs = normalizeInputs(updatedWellness);
+          // Compute WRI with bonus, but only apply the incremental delta since last journal today
+          const computedWithBonus = computeWRI(currentInputs, undefined, true);
+
+          // Read existing today's WRI if present to avoid double applying bonus on same day
+          const today = new Date().toISOString().slice(0,10);
+          let baselineWri = computedWithBonus.wri;
+          try {
+            // Fetch today's stored WRI; if exists, use it as baseline and only apply incremental 3 per extra journal
+            const existing = await getReadableJournalMetrics(currentUser.email);
+            const prevEntries = existing?.journal_entries_today ?? 0;
+            if (prevEntries > 0 && journalMetrics.journal_entries_today > prevEntries) {
+              const additionalEntries = journalMetrics.journal_entries_today - prevEntries;
+              // Only apply +3 per additional entry (capped so base 5+first 3 already covered previously)
+              const incrementalReduction = Math.min(10, additionalEntries * 3);
+              baselineWri = Math.max(0, computedWithBonus.wri + (10 - incrementalReduction));
+            }
+          } catch {}
+
+          await writeTodayWri(currentUser.email, { ...computedWithBonus, wri: baselineWri });
+          
+          // Store journal insights in encrypted form
+          console.log('📝 JOURNAL: Storing journal insights:', journalMetrics);
+          await storeJournalInsights(currentUser.email, journalMetrics);
+          console.log('📝 JOURNAL: Journal insights stored successfully');
+          
+          // Calculate total bonus applied for user feedback (matching MoodScoreService logic)
+          const baseBonus = journalMetrics.journal_entries_today > 0 ? 5 : 0;
+          const frequencyBonus = Math.min(10, journalMetrics.journal_entries_today * 3);
+          const weeklyBonus = journalMetrics.weekly_journal_count >= 3 ? Math.min(15, journalMetrics.weekly_journal_count * 2) : 0;
+          
+          let streakBonus = 0;
+          if (journalMetrics.journal_streak >= 1 && journalMetrics.journal_streak < 3) {
+            streakBonus = 2;
+          } else if (journalMetrics.journal_streak >= 3 && journalMetrics.journal_streak < 7) {
+            streakBonus = 8;
+          } else if (journalMetrics.journal_streak >= 7 && journalMetrics.journal_streak < 14) {
+            streakBonus = 15;
+          } else if (journalMetrics.journal_streak >= 14 && journalMetrics.journal_streak < 30) {
+            streakBonus = 25;
+          } else if (journalMetrics.journal_streak >= 30) {
+            streakBonus = 40;
+          }
+          const totalBonus = baseBonus + frequencyBonus + weeklyBonus + streakBonus;
+          
+          console.log('✅ Enhanced Journal WRI update:', {
+            newWRI: baselineWri,
+            streak: journalMetrics.journal_streak,
+            totalBonus,
+            breakdown: { baseBonus, frequencyBonus, weeklyBonus, streakBonus },
+            enhancedWellnessData: updatedWellness
+          });
+          
+          // Show streak achievement if applicable
+          if (journalMetrics.journal_streak > 0 && (journalMetrics.journal_streak === 3 || journalMetrics.journal_streak === 7 || journalMetrics.journal_streak === 14 || journalMetrics.journal_streak === 30)) {
+            const achievementTitle = journalMetrics.journal_streak === 30 ? '🏆 Master Journaler!' :
+                                    journalMetrics.journal_streak === 14 ? '🎖️ Champion Streaker!' :
+                                    journalMetrics.journal_streak === 7 ? '🔥 Week Warrior!' :
+                                    '⭐ Rising Star!';
+            console.log(`🎉 ACHIEVEMENT UNLOCKED: ${achievementTitle} (${journalMetrics.journal_streak} day streak!)`);
+          }
+          
+          // Also update the encrypted insights with journaling data
+          await fetch(`https://storeencryptedinsights-tipjtjdkwq-uc.a.run.app`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userEmail: currentUser.email,
+              wellnessData: updatedWellness
+            })
+          });
+          
+        } catch (e) {
+          console.warn('❌ WRI update after journal create failed:', e);
+        }
       } else {
         setError(response.error || 'Failed to create encrypted journal entry');
       }
@@ -360,7 +473,7 @@ const JournalPage: React.FC = () => {
       <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
         <div className="text-center">
           <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Please sign in to access your journal
+            {t('please_sign_in_journal')}
           </h2>
         </div>
       </div>
@@ -382,28 +495,37 @@ const JournalPage: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className={`text-4xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                📖 My Journal
-              </h1>
-              <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                Write down your thoughts, feelings, and experiences in your personal space.
-              </p>
-            </div>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className={`text-4xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              📖 {t('my_journal')}
+            </h1>
+            <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              {t('journal_description')}
+            </p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <LanguageSelector />
+            <button
+              onClick={() => navigate('/chat')}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
+            >
+              💬 {t('back_to_chat')}
+            </button>
+          </div>
             <div className="text-right">
               {userPassword ? (
                 <div className="flex items-center space-x-2 text-green-600">
                   <span>🔒</span>
-                  <span className="text-sm font-medium">Encrypted</span>
+                  <span className="text-sm font-medium">{t('encrypted')}</span>
                   <span className="text-xs text-gray-500">
-                    (Auto-clear in 30min)
+                    {t('auto_clear_30min')}
                   </span>
                 </div>
               ) : (
                 <div className="flex items-center space-x-2 text-orange-600">
                   <span>🔓</span>
-                  <span className="text-sm font-medium">Password Required</span>
+                  <span className="text-sm font-medium">{t('password_required')}</span>
                 </div>
               )}
             </div>
@@ -427,25 +549,25 @@ const JournalPage: React.FC = () => {
           <div className={`lg:col-span-1 ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6`}>
             <div className="flex justify-between items-center mb-6">
               <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Your Entries
+                {t('your_entries')}
               </h2>
               <button
                 onClick={handleNewJournal}
                 className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
               >
-                + New Entry
+                + {t('new_entry')}
               </button>
             </div>
 
             {loading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                <p className={`mt-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Loading...</p>
+                <p className={`mt-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{t('loading')}</p>
               </div>
             ) : journals.length === 0 ? (
               <div className="text-center py-8">
                 <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  No journal entries yet. Create your first entry!
+                  {t('no_journal_entries')}
                 </p>
               </div>
             ) : (
@@ -474,13 +596,13 @@ const JournalPage: React.FC = () => {
                     }}
                   >
                     <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {journal.title}
+                      {t('encrypted_journal_entry')}
                     </h3>
                     <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                       {formatDate(journal.createdAt)}
                     </p>
                     <p className={`text-sm mt-2 line-clamp-2 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                      {journal.content.substring(0, 100)}...
+                      {t('encrypted_content')}
                     </p>
                   </div>
                 ))}
@@ -494,21 +616,21 @@ const JournalPage: React.FC = () => {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {isCreating ? 'Create New Entry' : 'Edit Entry'}
+                    {isCreating ? t('create_new_entry') : t('edit_entry')}
                   </h2>
                   <div className="space-x-2">
                     <button
                       onClick={handleCancel}
                       className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                     >
-                      Cancel
+                      {t('cancel')}
                     </button>
                     <button
                       onClick={isCreating ? handleCreateJournal : handleUpdateJournal}
                       disabled={loading || !title.trim() || !content.trim()}
                       className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors"
                     >
-                      {loading ? 'Saving...' : isCreating ? 'Create' : 'Update'}
+                      {loading ? t('save') : isCreating ? t('create') : t('update')}
                     </button>
                   </div>
                 </div>
@@ -516,7 +638,7 @@ const JournalPage: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                      Title
+                      {t('title')}
                     </label>
                     <input
                       type="text"
@@ -528,16 +650,16 @@ const JournalPage: React.FC = () => {
                           ? 'bg-gray-700 border-gray-600 text-white'
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
-                      placeholder="Enter journal title..."
+                      placeholder={t('enter_journal_title')}
                     />
                     <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {title.length}/{journalConfig.validation.maxTitleLength} characters
+                      {title.length}/{journalConfig.validation.maxTitleLength} {t('characters')}
                     </p>
                   </div>
 
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                      Content
+                      {t('content')}
                     </label>
                     
                     {/* Voice Recorder */}
@@ -563,10 +685,10 @@ const JournalPage: React.FC = () => {
                           ? 'bg-gray-700 border-gray-600 text-white'
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
-                      placeholder="Write your thoughts here or use voice recording above..."
+                      placeholder={t('write_thoughts')}
                     />
                     <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {content.length}/{journalConfig.validation.maxContentLength} characters
+                      {content.length}/{journalConfig.validation.maxContentLength} {t('characters')}
                     </p>
                   </div>
                 </div>
@@ -582,19 +704,19 @@ const JournalPage: React.FC = () => {
                       onClick={() => handleEditJournal(selectedJournal)}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
                     >
-                      Edit
+                      {t('edit')}
                     </button>
                     <button
                       onClick={() => handleDeleteJournal(selectedJournal.id)}
                       className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
                     >
-                      Delete
+                      {t('delete')}
                     </button>
                   </div>
                 </div>
 
                 <div className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Created: {formatDate(selectedJournal.createdAt)}
+                  {t('created')}: {formatDate(selectedJournal.createdAt)}
                   {(() => {
                     const createdAt = selectedJournal.createdAt as any;
                     const updatedAt = selectedJournal.updatedAt as any;
@@ -606,7 +728,7 @@ const JournalPage: React.FC = () => {
                       : new Date(updatedAt).getTime();
                     return createdTime !== updatedTime;
                   })() && (
-                    <span> • Updated: {formatDate(selectedJournal.updatedAt)}</span>
+                    <span> • {t('updated')}: {formatDate(selectedJournal.updatedAt)}</span>
                   )}
                 </div>
 
@@ -616,13 +738,13 @@ const JournalPage: React.FC = () => {
                   ) : userPassword ? (
                     <div className="text-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                      <p>Decrypting journal content...</p>
+                      <p>{t('decrypting_content')}</p>
                     </div>
                   ) : (
                     <div className="text-center py-8">
                       <div className="text-6xl mb-4">🔒</div>
-                      <p className="text-orange-600 font-medium">Encrypted Content</p>
-                      <p className="text-sm mt-2">Enter your password to view this journal entry</p>
+                      <p className="text-orange-600 font-medium">{t('encrypted_content')}</p>
+                      <p className="text-sm mt-2">{t('enter_password_to_view')}</p>
                     </div>
                   )}
                 </div>
@@ -631,10 +753,10 @@ const JournalPage: React.FC = () => {
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">📝</div>
                 <h3 className={`text-xl font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Select a journal entry to read
+                  {t('select_journal_entry')}
                 </h3>
                 <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  Choose an entry from the list or create a new one to get started.
+                  {t('choose_entry_or_create')}
                 </p>
               </div>
             )}

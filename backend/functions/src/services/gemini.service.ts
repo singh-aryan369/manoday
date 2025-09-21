@@ -41,7 +41,7 @@ export class GeminiService {
     return false;
   }
 
-  async generateResponse(request: GeminiRequest): Promise<GeminiResponse> {
+  async generateResponse(request: GeminiRequest & { language?: string }): Promise<GeminiResponse> {
     try {
       // Check if this is a new chat session
       const isNewChat = this.checkNewChatSession(request.conversationHistory);
@@ -65,7 +65,7 @@ export class GeminiService {
         apiKeyLength: GEMINI_API_KEY?.length || 0
       });
       
-      const prompt = this.createEmpatheticPrompt(request.message, request.conversationHistory, request.wellnessData);
+      const prompt = this.createEmpatheticPrompt(request.message, request.conversationHistory, request.wellnessData, request.language);
       
       logger.info('Sending prompt to Gemini:', { prompt: prompt.substring(0, 500) + '...' });
       
@@ -107,13 +107,16 @@ export class GeminiService {
         bodySize: JSON.stringify(requestBody).length
       });
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
       const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(60000) // 60 second timeout
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -138,6 +141,7 @@ export class GeminiService {
       }
 
       const data = await response.json();
+      clearTimeout(timeoutId);
       const geminiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                            await this.getIntelligentFallback(request.message, request.conversationHistory, request.wellnessData);
       
@@ -221,7 +225,7 @@ export class GeminiService {
   }
 
   // Create empathetic prompt for Gemini based on real interview examples
-  private createEmpatheticPrompt(message: string, conversationHistory: string[], wellnessData: any): string {
+  private createEmpatheticPrompt(message: string, conversationHistory: string[], wellnessData: any, language: string = 'en'): string {
     const history = conversationHistory.join('\n');
     const effectiveWellnessData = wellnessData || {};
     
@@ -301,7 +305,7 @@ export class GeminiService {
 
     // If user asks for recommendation OR all parameters collected, give brief supportive response
     if (!nextParameter) {
-      return `You are a supportive friend responding to someone asking for help.
+      const basePrompt = `You are a supportive friend responding to someone asking for help.
 
 User's message: "${message}"
 What you know about them: ${JSON.stringify(wellnessData)}
@@ -317,12 +321,33 @@ CRITICAL INSTRUCTIONS:
 8. Let them know you're here to help and they're not alone
 
 Remember: Compassionate, empathetic, supportive - like a close friend who truly cares.`;
+
+      if (language === 'hi') {
+        return `आप एक सहायक मित्र हैं जो किसी की मदद के लिए पूछने वाले का जवाब दे रहे हैं।
+
+उपयोगकर्ता का संदेश: "${message}"
+आप उनके बारे में जानते हैं: ${JSON.stringify(wellnessData)}
+
+महत्वपूर्ण निर्देश:
+1. 6-8 पंक्तियों का सहानुभूतिपूर्ण, देखभाल करने वाला जवाब दें
+2. गर्म, समझदार और भावनात्मक रूप से सहायक बनें
+3. यदि वे सिफारिश/गतिविधि के लिए पूछते हैं, तो उनके अनुरोध को गर्मजोशी से स्वीकार करें
+4. एक देखभाल करने वाले मित्र की तरह लगें जो वास्तव में उनकी समस्याओं को समझता है
+5. उनकी भावनाओं की वास्तविक सहानुभूति और सत्यापन दिखाएं
+6. उनकी चुनौतियों को स्वीकार करते हुए प्रोत्साहित और आशावादी बनें
+7. उन्हें आशा और सहायता का एहसास दिलाएं
+8. उन्हें बताएं कि आप यहां मदद के लिए हैं और वे अकेले नहीं हैं
+
+याद रखें: दयालु, सहानुभूतिपूर्ण, सहायक - एक करीबी मित्र की तरह जो वास्तव में परवाह करता है।`;
+      }
+      
+      return basePrompt;
     }
 
     // DON'T mark as asked yet - wait until we successfully extract data
     // this.askedParameters.add(nextParameter); // MOVED TO AFTER SUCCESSFUL EXTRACTION
 
-    return `You are a warm, empathetic AI friend helping track mental wellness. 
+    const basePrompt = `You are a warm, empathetic AI friend helping track mental wellness. 
 
 🚨 CRITICAL WORKFLOW RULE - NEVER BREAK THIS ORDER:
 1. mood → 2. sleepHours → 3. stressLevel → 4. academicPressure → 5. socialSupport → 6. loneliness → 7. confidenceLevel → 8. hobbiesInterest → 9. opennessToJournaling → 10. willingForProfessionalHelp
@@ -346,92 +371,38 @@ ${this.getComprehensiveMappingForParameter(nextParameter)}
 - You are currently on parameter ${nextParameter}
 - After extracting this parameter, you MUST ask about the next one in sequence
 - NEVER skip parameters or jump around
-- NEVER ask about a parameter that comes later in the sequence
-- ALWAYS follow the exact order above
+- NEVER ask about a parameter that comes later in the sequence`;
 
-EXAMPLE: If user says "I feel lonely" and you're collecting loneliness (step 6), extract "Often" and ask about confidence level (step 7) next.
+    if (language === 'hi') {
+      return `आप एक गर्म, सहानुभूतिपूर्ण AI मित्र हैं जो मानसिक स्वास्थ्य को ट्रैक करने में मदद कर रहे हैं।
 
-CONTEXT-AWARE INTELLIGENCE:
-- Consider user's previous responses and overall conversation tone
-- Use emotional context to make intelligent inferences
-- If user seems generally positive → lean towards positive values
-- If user seems generally negative → lean towards negative values
-- If user seems neutral → use neutral values
-- Always prioritize explicit mentions over context inference
+🚨 महत्वपूर्ण वर्कफ्लो नियम - इस क्रम को कभी न तोड़ें:
+1. मूड → 2. नींद के घंटे → 3. तनाव स्तर → 4. शैक्षणिक दबाव → 5. सामाजिक सहायता → 6. अकेलापन → 7. आत्मविश्वास स्तर → 8. शौक रुचि → 9. डायरी लेखन के लिए खुलापन → 10. व्यावसायिक सहायता के लिए इच्छा
 
-CONFUSION SCENARIOS - ALWAYS EXTRACT AND MOVE FORWARD:
-- "I don't know" → Make best guess from context and move to next parameter
-- "Maybe" → Interpret as positive/neutral and move to next parameter  
-- "Not sure" → Make intelligent inference and move to next parameter
-- "Whatever" → Interpret as neutral and move to next parameter
-- "Skip this" → Assign reasonable default and move to next parameter
-- "I can't answer" → Use context clues and move to next parameter
-- Vague responses → Always extract something, never get stuck
-- "Not good" → Sad (not Happy)
-- "Very less sleep" → 5 (not 7)
+वर्तमान कार्य: पैरामीटर एकत्र करें: ${nextParameter}
 
-SKIP LOGIC - ALWAYS ASSIGN DEFAULT AND MOVE FORWARD:
-- "skip" → Assign reasonable default value and move to next parameter
-- "pass" → Assign reasonable default value and move to next parameter
-- "next" → Assign reasonable default value and move to next parameter
-- "move on" → Assign reasonable default value and move to next parameter
+उपयोगकर्ता संदेश: "${message}"
+बातचीत: ${history}
+अब तक एकत्रित: ${JSON.stringify(effectiveWellnessData)}
 
-🚫 CRITICAL: NEVER extract future parameters. Only focus on the CURRENT parameter (${nextParameter}).
+निर्देश:
+1. उपयोगकर्ता के जवाब से ${nextParameter} मान निकालें
+2. एक गर्म, सहानुभूतिपूर्ण जवाब दें (4-6 पंक्तियां)
+3. अगले पैरामीटर के बारे में स्वाभाविक रूप से पूछें लेकिन निश्चित रूप से अगले पैरामीटर के बारे में पूछें, बातचीत में फंसें नहीं
+4. अंत में JSON लौटाएं: {code}{"extractedData": {"${nextParameter}": "EXTRACTED_VALUE"}}{/code}
 
-RESPONSE STRUCTURE:
-1. Acknowledge user's message empathetically (3-4 lines)
-2. ALWAYS confirm the extracted parameter value clearly using phrases like:
-   - "Based on what you've shared, I can see that your mood is Sad"
-   - "From what you've told me, it sounds like your sleep hours are around 5 hours"
-   - "I understand that your stress level is High"
-3. Ask about the next parameter naturally and warmly
-4. Keep total response under 6-8 lines
-5. Sound like a caring friend, not a questionnaire
+मैपिंग दिशानिर्देश:
+${this.getComprehensiveMappingForParameter(nextParameter)}
 
-CRITICAL: You MUST confirm the extracted value in your response so the system can parse it correctly.
-
-🚨 CRITICAL JSON REQUIREMENT: 
-You MUST return your response in this EXACT JSON format at the end:
-{code}
-{
-  "extractedData": {
-    "PARAMETER_NAME": "EXTRACTED_VALUE"
+🚨 वर्कफ्लो प्रवर्तन:
+- आप वर्तमान में ${nextParameter} पैरामीटर पर हैं
+- इस पैरामीटर को निकालने के बाद, आपको क्रम में अगले के बारे में पूछना होगा
+- कभी भी पैरामीटर न छोड़ें या इधर-उधर न कूदें
+- कभी भी ऐसे पैरामीटर के बारे में न पूछें जो क्रम में बाद में आता है`;
+    }
+    
+    return basePrompt;
   }
-}
-{/code}
-
-EXAMPLE RESPONSES:
-User: "I'm feeling really down today"
-You: "I'm so sorry you're feeling down. That can be really tough to go through, and I want you to know that it's okay to not be okay sometimes. Your feelings are valid, and I'm here to listen and support you. Based on what you've shared, I can see that your mood is Sad. Now, let me ask about your sleep - how many hours do you usually get at night? Sleep can really affect how we feel emotionally.
-
-{code}
-{
-  "extractedData": {
-    "mood": "Sad"
-  }
-}
-{/code}"
-
-User: "I barely slept last night"
-You: "I can imagine how hard that must be. Not getting enough sleep can really take a toll on our mental health and make everything feel so much harder. It's like trying to run a marathon without any fuel - your body and mind just can't function properly. From what you've told me, it sounds like your sleep hours are around 2 hours. That's definitely not enough rest. Speaking of taking care of yourself, how would you describe your stress levels these days? Sleep and stress often go hand in hand.
-
-{code}
-{
-  "extractedData": {
-    "sleepHours": "2"
-  }
-}
-{/code}"
-
-CRITICAL: You are a compassionate friend who genuinely cares. Always extract data, never get stuck, and maintain the warm, supportive tone throughout the conversation. Your intelligence should handle almost every scenario - only use fallbacks when absolutely necessary.
-
-🚫 STRICT EXTRACTION RULE: Only extract the CURRENT parameter. 
-🚫 NEVER extract future parameters like loneliness, hobbies, journaling, or professional help unless they are explicitly mentioned by the user in relation to the current question.
-🎯 Focus on ONE parameter at a time to maintain the conversation flow.`;
-  }
-
-
-
   private parseGeminiResponse(geminiResponse: string, requestedParameter?: string): Partial<WellnessData> {
     try {
       logger.info(`🎯 PARSING GEMINI RESPONSE for parameter: ${requestedParameter}`);

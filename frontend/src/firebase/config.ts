@@ -1,17 +1,17 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, GithubAuthProvider, OAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 
 // Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDX0jcHEdUypuSrVLHyJLUK64YX3j71UwE",
-  authDomain: "smart-surf-469908-n0.firebaseapp.com",
-  projectId: "smart-surf-469908-n0",
-  storageBucket: "smart-surf-469908-n0.appspot.com",
-  messagingSenderId: "118966222674",
-  appId: "1:118966222674:web:a03df61cf313141d07448b",
-  measurementId: "G-DQEVEJ9G3D"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "YOUR_FIREBASE_API_KEY_HERE",
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID_HERE",
+  appId: process.env.REACT_APP_FIREBASE_APP_ID || "YOUR_APP_ID_HERE",
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || "YOUR_MEASUREMENT_ID_HERE"
 };
 
 // Initialize Firebase
@@ -25,6 +25,10 @@ export const auth = getAuth(app);
 
 // Initialize Cloud Firestore and get a reference to the service
 export const db = getFirestore(app);
+// Use Firestore emulator in local dev
+if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+  try { connectFirestoreEmulator(db, '127.0.0.1', 8081); } catch (_) {}
+}
 
 // OAuth providers
 export const googleProvider = new GoogleAuthProvider();
