@@ -1,0 +1,46 @@
+{
+  "main": "lib/index.js",
+  "scripts": {
+    "genkit:start": "genkit start -- tsx --watch src/genkit-sample.ts",
+    "lint": "eslint --ext .js,.ts .",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "serve:local": "NODE_ENV=development USE_FIREBASE_EMULATOR=true npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "start:local": "npm run serve:local",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "name": "functions",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "@genkit-ai/firebase": "^1.18.0",
+    "@genkit-ai/vertexai": "^1.18.0",
+    "@google-cloud/aiplatform": "^3.15.0",
+    "@google-cloud/speech": "^6.0.0",
+    "axios": "^1.6.0",
+    "express": "^5.1.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.0.1",
+    "genkit": "^1.18.0",
+    "google-auth-library": "^10.4.1",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/node-fetch": "^2.6.4",
+    "@typescript-eslint/eslint-plugin": "^5.12.0",
+    "@typescript-eslint/parser": "^5.12.0",
+    "eslint": "^8.9.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-import": "^2.25.4",
+    "firebase-functions-test": "^3.1.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "private": true
+}

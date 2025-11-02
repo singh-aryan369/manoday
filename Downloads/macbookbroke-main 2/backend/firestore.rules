@@ -1,0 +1,129 @@
+rules_version='2'
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Encrypted wellness insights
+    // Frontend: read own docs; writes are via Functions only
+    match /encrypted_insights/{userEmail} {
+      allow read: if request.auth != null && request.auth.token.email == userEmail;
+      allow write: if false;
+
+      match /chat_sessions/{sessionId} {
+        allow read: if request.auth != null && request.auth.token.email == userEmail;
+        allow write: if false;
+      }
+    }
+    
+    // Users can only access their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Chat sessions are private to each user
+    match /chats/{chatId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Anonymous chat data (for privacy-focused mental wellness)
+    match /anonymous_chats/{chatId} {
+      // Allow creation of anonymous chats
+      allow create: if request.auth != null;
+      // Allow reading only if user created the chat
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      // Allow updates only if user owns the chat
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+    
+    // Mood score snapshots for dashboard
+    match /mood_scores/{userEmail}/daily/{date} {
+      allow read, write: if request.auth != null && request.auth.token.email == userEmail;
+    }
+
+    // Journal entries - users can read/write their own journals
+    match /journals/{journalId} {
+      allow read, write: if request.auth != null && 
+        request.auth.token.email == resource.data.userId;
+      allow create: if request.auth != null && 
+        request.auth.token.email == request.resource.data.userId;
+    }
+
+    // Journal insights - encrypted journal metrics storage
+    match /Journal_insights/{userEmail} {
+      allow read: if request.auth != null && request.auth.token.email == userEmail;
+      allow write: if false; // Only functions can write
+
+      match /daily/{date} {
+        allow read: if request.auth != null && request.auth.token.email == userEmail;
+        allow write: if false; // Only functions can write
+      }
+    }
+
+    // Meditation collections - public read access for media
+    match /meditation_videos/{videoId} {
+      allow read: if true; // Public read access for meditation videos
+      allow write: if request.auth != null; // Only authenticated users can write
+    }
+    
+    match /meditation_sounds/{soundId} {
+      allow read: if true; // Public read access for meditation sounds
+      allow write: if request.auth != null; // Only authenticated users can write
+    }
+
+    // Meditation stats - users can read their own stats, only functions can write
+    match /meditation_stats/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // Only functions can write
+    }
+
+    // Meditation activities - users can read their own activities, only functions can write
+    match /meditation_activities/{activityId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow write: if false; // Only functions can write
+    }
+
+    // Hobbies catalog - public read access for all users
+    match /hobbies_catalog/{hobbyId} {
+      allow read: if true; // Public read access for hobby catalog
+      allow write: if false; // Only functions/admin can write
+    }
+
+    // User hobby profiles - users can read/write their own profiles
+    match /user_hobby_profiles/{userId} {
+      allow read: if request.auth != null && request.auth.token.email == userId;
+      allow write: if false; // Only functions can write (via API)
+    }
+
+    // Hobby activities - users can read their own activities, only functions can write
+    match /hobby_activities/{activityId} {
+      allow read: if request.auth != null && request.auth.token.email == resource.data.user_id;
+      allow write: if false; // Only functions can write
+    }
+
+    // Daily goals - users can read/write their own goals
+    match /daily_goals/{userEmail}/days/{dateKey} {
+      allow read, write: if request.auth != null && request.auth.token.email == userEmail;
+    }
+
+    // Goal completion stats - users can read their own stats, write is allowed for tracking
+    match /daily_goals/{userEmail}/meta/stats {
+      allow read, write: if request.auth != null && request.auth.token.email == userEmail;
+    }
+
+    // Temporary: Allow debugging (REMOVE IN PRODUCTION)
+    // This helps identify what collections are being accessed
+    match /{collection}/{document} {
+      allow read, write: if request.auth != null && 
+        (collection == 'temp_debug' || collection == 'user_debug');
+    }
+
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

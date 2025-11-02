@@ -1,0 +1,36 @@
+# Compiled JavaScript files
+lib/**/*.js
+lib/**/*.js.map
+lib/**/*.d.ts
+
+# TypeScript v1 declaration files
+typings/
+
+# Node.js dependency directory
+node_modules/
+*.local
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+firestore-debug.log
+
+# Test files
+test-*.js
+*.test.js
+*.spec.js
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo

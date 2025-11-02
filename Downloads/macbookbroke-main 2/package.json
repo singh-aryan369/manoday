@@ -1,0 +1,44 @@
+{
+  "name": "manoday-app-root",
+  "version": "1.0.0",
+  "description": "Manoday Mental Wellness App - Root Package",
+  "private": true,
+  "scripts": {
+    "frontend:install": "cd frontend && npm install",
+    "frontend:start": "cd frontend && npm start",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:serve": "cd frontend && npx serve -s build -l 3000",
+    "backend:install": "cd backend/functions && npm install",
+    "backend:start": "cd backend/functions && npm run serve",
+    "backend:build": "cd backend/functions && npm run build",
+    "install:all": "npm run frontend:install && npm run backend:install",
+    "dev": "npx concurrently \"npm run frontend:start\" \"npm run backend:start\"",
+    "dev:local": "npx concurrently --kill-others --success first \"npm run emulators:start:ui\" \"sleep 10 && npm run frontend:start\"",
+    "build": "npm run frontend:build",
+    "deploy": "npm run frontend:build && firebase deploy",
+    "deploy:hosting": "npm run frontend:build && firebase deploy --only hosting",
+    "deploy:functions": "npm run backend:build && firebase deploy --only functions",
+    "deploy:firestore": "firebase deploy --only firestore",
+    "emulators:start": "firebase emulators:start",
+    "emulators:start:ui": "firebase emulators:start --only functions,firestore,auth",
+    "setup:local": "npm run install:all"
+  },
+  "devDependencies": {
+    "@types/firebase": "^2.4.32",
+    "concurrently": "^8.2.2",
+    "firebase-admin": "^13.5.0"
+  },
+  "workspaces": [
+    "frontend",
+    "backend/functions"
+  ],
+  "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
+    "firebase-functions": "^6.5.0",
+    "framer-motion": "^12.23.24",
+    "i18next": "^25.6.0",
+    "i18next-browser-languagedetector": "^8.2.0",
+    "i18next-http-backend": "^3.0.2",
+    "react-i18next": "^16.2.3"
+  }
+}
